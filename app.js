@@ -13,7 +13,7 @@ const flowGreeting = addKeyword(['hola',])
 
 // Flujo de inicio
 const flowWelcome = addKeyword(EVENTS.WELCOME)
-.addAnswer('¡Bienvenidos estamos aquí para ayudarte!' + '\nEscribe "Menu" para ver las opciones disponibles',{
+.addAnswer('Hola estoy ocupado en este momento, ¿Necesitas algo?' + '\nEscribe "Menu" para ver las opciones disponibles',{
     delay: 500,
     capture: true,
 }, async (ctx, ctxFn) => {
