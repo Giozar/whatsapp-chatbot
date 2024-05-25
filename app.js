@@ -6,14 +6,17 @@ const MockAdapter = require('@bot-whatsapp/database/mock')
 const { EVENTS } = require('@bot-whatsapp/bot/lib/bundle.bot.cjs')
 const { chatGPT } = require('./src/openai/chatgpt')
 
-
-// Flujo de palabras clave - Saludo inicial
-const flowGreeting = addKeyword(['hola',])
-.addAnswer('Hola ¿cómo estás?')
-
-// Flujo de inicio
 const flowWelcome = addKeyword(EVENTS.WELCOME)
-.addAnswer('Hola estoy ocupado en este momento, ¿Necesitas algo?' + '\nEscribe "Menu" para ver las opciones disponibles',{
+.addAction(async (_, { flowDynamic }) => {
+    const inicio = await chatGPT(`Hola`);
+    return await flowDynamic(inicio);
+})
+.addAction({ capture: true }, async (ctx, { flowDynamic, state }) => {
+    await state.update({ name: ctx.body })
+    const respuesta = await chatGPT(ctx.body)
+    return await flowDynamic(respuesta);
+})
+.addAnswer('¿Necesitas algo?' + '\nEscribe "Menu" para ver las opciones disponibles',{
     delay: 500,
     capture: true,
 }, async (ctx, ctxFn) => {
@@ -69,7 +72,6 @@ const flowMenu = addKeyword('menu')
 const main = async () => {
     const adapterDB = new MockAdapter()
     const adapterFlow = createFlow([
-        flowGreeting,
         flowWelcome,
         flowMenu,
     ])
