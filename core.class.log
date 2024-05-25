@@ -1,0 +1,96 @@
+[handleMsg]:  {
+  key: {
+    remoteJid: '5214439565799@s.whatsapp.net',
+    fromMe: false,
+    id: '180932F3136291EFED7D4A141A105F9E',
+    participant: undefined
+  },
+  messageTimestamp: 1716657060,
+  pushName: 'Prueba',
+  broadcast: false,
+  message: Message {
+    conversation: 'Necesito ayuda',
+    messageContextInfo: MessageContextInfo {
+      deviceListMetadata: [DeviceListMetadata],
+      deviceListMetadataVersion: 2
+    }
+  },
+  body: 'Necesito ayuda',
+  from: '5214439565799'
+}
+[QUEUE_SE_ENVIO]:  {
+  ref: 'ans_efb798d0-53d2-4bdf-a35c-8acf60ec1e12',
+  keyword: 'key_3c9217a0-c8f7-4a36-afa5-960265cca802',
+  answer: 'Dime!!!, ¿Qué paso?',
+  options: {
+    media: 'https://cataas.com/cat',
+    buttons: [],
+    capture: true,
+    child: null,
+    delay: 1000,
+    idle: null,
+    ref: null,
+    nested: [],
+    keyword: {},
+    callback: true
+  },
+  refSerialize: '6b05a094435581b217339e264f594dd1'
+}
+[handleMsg]:  {
+  key: {
+    remoteJid: '5214439565799@s.whatsapp.net',
+    fromMe: false,
+    id: '592CFC53E79DB2D2C7DDFE3586716746',
+    participant: undefined
+  },
+  messageTimestamp: 1716657076,
+  pushName: 'Prueba',
+  broadcast: false,
+  message: Message {
+    conversation: 'Gatos jaja??',
+    messageContextInfo: MessageContextInfo {
+      deviceListMetadata: [DeviceListMetadata],
+      deviceListMetadataVersion: 2
+    }
+  },
+  body: 'Gatos jaja??',
+  from: '5214439565799'
+}
+[handleMsg]:  {
+  key: {
+    remoteJid: '5214439565799@s.whatsapp.net',
+    fromMe: false,
+    id: '7F6575968710EC2379EC82199995289C',
+    participant: undefined
+  },
+  messageTimestamp: 1716657084,
+  pushName: 'Prueba',
+  broadcast: false,
+  message: Message {
+    conversation: 'Si',
+    messageContextInfo: MessageContextInfo {
+      deviceListMetadata: [DeviceListMetadata],
+      deviceListMetadataVersion: 2
+    }
+  },
+  body: 'Si',
+  from: '5214439565799'
+}
+[QUEUE_SE_ENVIO]:  {
+  ref: 'ans_efb798d0-53d2-4bdf-a35c-8acf60ec1e12',
+  keyword: 'key_3c9217a0-c8f7-4a36-afa5-960265cca802',
+  answer: 'Dime!!!, ¿Qué paso?',
+  options: {
+    media: 'https://cataas.com/cat',
+    buttons: [],
+    capture: true,
+    child: null,
+    delay: 1000,
+    idle: null,
+    ref: null,
+    nested: [],
+    keyword: {},
+    callback: true
+  },
+  refSerialize: '6b05a094435581b217339e264f594dd1'
+}
