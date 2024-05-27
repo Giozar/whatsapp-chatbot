@@ -29,6 +29,4 @@ const chatGPT = async ( name, history ) => {
     return response;
 }
 
-module.exports = {
-    chatGPT
-}
+module.exports = chatGPT;
