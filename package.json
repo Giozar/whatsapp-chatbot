@@ -2,11 +2,11 @@
     "name": "base-bailey-memory",
     "version": "1.0.0",
     "description": "",
-    "main": "app.js",
+    "main": "src/app.js",
     "scripts": {
         "prestart": "npx eslint . --no-ignore",
         "pre-copy": "cd .. && npm run  copy.lib base-baileys-memory",
-        "start": "node --env-file=.env app.js"
+        "start": "node --env-file=.env src/app.js"
     },
     "keywords": [],
     "dependencies": {
