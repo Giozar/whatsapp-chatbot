@@ -8,7 +8,7 @@ const openai = new OpenAI({
 const chatGPT = async ( name, history ) => {
 
     const prompt = generatePrompt(name);
-    console.log('[PROMPT]', prompt);
+    // console.log('[PROMPT]', prompt);
     const completion = await openai.chat.completions.create({
         messages: [
             {

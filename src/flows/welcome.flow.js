@@ -18,14 +18,21 @@ const welcomeFlow = BotWhatsapp.addKeyword(BotWhatsapp.EVENTS.WELCOME)
 
         const ai = await chatGPT(username, newHistory);
 
-        await flowDynamic(ai);
+        // Divide el texto en fragmentos de texto de acuerdo a los puntos y saltos de línea: 
+        const chunks = ai.split(/(?<!\d)\.\s+/g);
+
+        for (const chunk of chunks) {
+            await flowDynamic(chunk);
+        }
+
 
         newHistory.push({
             role: 'assistant',
             content: ai
         });
 
-        await state.update({hsitory: newHistory})
+        await state.update({hsitory: newHistory});
+
     } catch (error) {
         console.log(error);
     }
