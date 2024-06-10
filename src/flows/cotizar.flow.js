@@ -17,7 +17,9 @@ const cotizarFlow = BotWhatsapp.addKeyword(['Cotizar', 'Cotización', 'Cotiza', 
     async(ctx, {state, flowDynamic, fallBack}) => {
         // Extrae el número de unidades de la respuesta del usuario
         // Validamos que el número de unidades sea mayor a 0 y que sea un número
-        const units = parseInt(ctx.body);
+        // De la cadena de texto extraeremos el número de unidades, por ejemplo: "Necesito 10 unidades" -> 10
+
+        const units = parseInt(ctx.body.match(/\d+/g));
 
         if(isNaN(units) || units < 1){
             return fallBack('Por favor, ingresa un número válido de unidades');
@@ -27,25 +29,64 @@ const cotizarFlow = BotWhatsapp.addKeyword(['Cotizar', 'Cotización', 'Cotiza', 
         const quantity = state.getMyState().quantity;
         const product = state.getMyState().product;
 
-        await flowDynamic(`De acuerdo a tu solicitud, necesitas ${quantity} unidades del ${product}.`);
+        await flowDynamic(`De acuerdo a tu solicitud, necesitas ${quantity} unidades de ${product}.`);
 
-        
+        await state.update({verifyName: 0});
     })
 .addAnswer('¿Cuál es tu nombre completo? o el nombre de la persona de contacto',  {capture: true},
-    async(ctx, {state, flowDynamic, fallBack}) => {
+    async(ctx, {state, flowDynamic, fallBack, endFlow}) => {
         // Implementa una validación de nombre con REGEX
-        const nameRegex = /^[a-zA-Z\s]{3,50}$/;
-        await state.update({name: ctx.body});
-        const name = state.getMyState().name;
-        if(!nameRegex.test(name)){
-            return fallBack('Por favor, ingresa un nombre válido');
-        }
         
-        await flowDynamic(`De acuerdo a tu solicitud, el nombre de la persona de contacto es ${name}.`)
+        if (state.getMyState().verifyName === 0) {
+            const nameRegex = /^[a-zA-Z\s]{3,50}$/;
+            await state.update({name: ctx.body});
+            const name = state.getMyState().name;
+
+            if(!nameRegex.test(name)){
+                return fallBack('Por favor, ingresa un nombre válido');
+            }
+            // await flowDynamic(`De acuerdo a tu solicitud, el nombre de la persona de contacto es ${name}`);
+
+            await state.update({verifyName: 1});
+            
+        }
+
+        if (state.getMyState().verifyName === 1) {
+            await state.update({verifyName: 2});
+            return fallBack('¿El nombre es correcto?');
+        }
+
+        // Extraer si en la respuesta del usuario se encuentra la palabra "no" o "si" con REGEX sin importar mayúsculas o minúsculas
+        const response = ctx.body.toLowerCase();
+
+        console.log(response);
+        
+        const match = response.match(/no|si/gi);
+        const confirm = match ? match[0] : null; 
+        console.log(confirm);
+
+        if(confirm === 'no'){
+            await state.update({verifyName: 0});
+            return fallBack('Por favor, ingresa el nombre de la persona de contacto');
+        }
+
+        if(confirm === 'si'){
+            await flowDynamic(`De acuerdo a tu solicitud, el nombre de la persona de contacto es ${state.getMyState().name}`);
+        }
+
+        // Verificar si existe ls palabra, salir, cancelar, terminar, finalizar, adios, chao o null en la respuesta del usuario
+        // Si existe alguna de estas palabras, finaliza el flujo y no sigue preguntando
+        if((ctx.body.toLowerCase().match(/salir|cancelar|terminar|finalizar|adios|chao/gi)) || (ctx.body === null)){
+            await state.update({exit: 1});
+            return endFlow('Se ha cancelado la cotización');
+        }
 
     })
 .addAnswer('¿Cuál es tu correo electrónico?',  {capture: true},
-    async(ctx, {state, flowDynamic, fallBack}) => {
+    async(ctx, {state, flowDynamic, fallBack, endFlow}) => {
+        if(state.getMyState().exit === 1){
+            return endFlow('Se ha cancelado la cotización');
+        }
         // Implemeta una validación de correo electrónico con REGEX
         const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
         await state.update({email: ctx.body});
