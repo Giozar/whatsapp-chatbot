@@ -200,11 +200,73 @@ const cotizarFlow = BotWhatsapp.addKeyword(['Cotizar', 'Cotización', 'Cotiza', 
 
         if(confirm === 'si'){
             await state.update({exit: 0});
+            await state.update({verifyPhone: 1});
             await flowDynamic(`De acuerdo a tu solicitud, el correo electrónico es ${state.getMyState().email}`);
         }
 
         if(confirm === null){
             return fallBack(`Disculpa, no entendí tu respuesta. ¿El correo electrónico ${state.getMyState().email} es correcto?`);
+        }
+
+    })
+.addAnswer(`¿Deseas agregar este número de teléfono para contactarte?`,  {capture: true},
+    async(ctx, {state, flowDynamic, fallBack, endFlow}) => {
+
+        // Obtiene los últimos 10 dígitos de la cadena de texto
+
+        const phone = ctx.from.match(/\d{10}$/g);
+        await state.update({phone: phone[0]});
+
+
+        if((ctx.body.toLowerCase().match(/salir|cancelar|terminar|finalizar|adios|chao/gi)) || (ctx.body === null)){
+            await state.update({exit: 1});
+            return endFlow('Se ha cancelado la cotización');
+        }
+
+        if(state.getMyState().exit === 1){
+            return endFlow('Se ha cancelado la cotización');
+        }
+
+        if(state.getMyState().verifyPhone === 0){
+            // Implementa un formateo de número de teléfono con REGEX
+            // Sin espacios, guiones o paréntesis, solo 10 dígitos
+            // Ejemplo: mi número es 12-34 5678 90. -> 1234567890
+
+            const phone = ctx.body.match(/\d{10}$/g);
+            
+            const phoneRegex = /^\d{10}$/;
+            
+            if(!phoneRegex.test(phone)){
+                return fallBack('Por favor, ingresa un número de teléfono válido');
+                }
+            await state.update({phone: phone[0]});
+            await state.update({verifyPhone: 2});
+        }
+
+        if(state.getMyState().verifyPhone === 2){
+            await state.update({verifyPhone: 3});
+            return fallBack(`¿El número de teléfono ${state.getMyState().phone} es correcto?`);
+        }
+
+        // Extraer si en la respuesta del usuario se encuentra la palabra "no" o "si" con REGEX sin importar mayúsculas o minúsculas
+        const response = ctx.body.toLowerCase();
+        const match = response.match(/no|si/gi);
+        const confirm = match ? match[0] : null;
+        
+
+        if(confirm === 'no'){
+            await state.update({verifyPhone: 0});
+            return fallBack('Por favor, ingresa el número de teléfono que deseas agregar');
+        }
+
+        if(confirm === 'si'){
+            await state.update({exit: 0});
+            await state.update({verifyAddress: 0});
+            await flowDynamic(`De acuerdo a tu solicitud, el número de teléfono es ${state.getMyState().phone}`);
+        }
+
+        if(confirm === null){
+            return fallBack(`Disculpa, no entendí tu respuesta. ¿El número de teléfono ${state.getMyState().phone} es correcto?`);
         }
 
     })
