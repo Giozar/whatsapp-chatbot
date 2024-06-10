@@ -24,9 +24,9 @@ DIRECTRICES PARA RESPONDER AL CLIENTE:
 
 
 const DATE_BASE = [
+    `- Catálogo de herramientas de Airontools`,
     `- Cotización de herramientas de Airontools`,
-    `- Servcio técnico de herramientas de Airontools`,
-    `- Promoción de herramientas de Airontools`,
+    `- Servicio técnico de herramientas de Airontools`,
 ].join('\n')
 
 const generatePrompt = (name) => {
