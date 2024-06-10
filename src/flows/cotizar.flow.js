@@ -80,7 +80,7 @@ const cotizarFlow = BotWhatsapp.addKeyword(['Cotizar', 'Cotización', 'Cotiza', 
 
         if (state.getMyState().verifyName === 1) {
             await state.update({verifyName: 2});
-            return fallBack('¿El nombre es correcto?');
+            return fallBack(`¿El nombre ${state.getMyState().name} es correcto?`);
         }
 
         // Extraer si en la respuesta del usuario se encuentra la palabra "no" o "si" con REGEX sin importar mayúsculas o minúsculas
@@ -98,10 +98,65 @@ const cotizarFlow = BotWhatsapp.addKeyword(['Cotizar', 'Cotización', 'Cotiza', 
         }
 
         if(confirm === 'si'){
-            await state.update({exit: 2});
+            await state.update({exit: 0});
+            await state.update({verifyCompany: 0});
             await flowDynamic(`De acuerdo a tu solicitud, el nombre de la persona de contacto es ${state.getMyState().name}`);
         }
 
+        if(confirm === null){
+            return fallBack(`Disculpa, no entendí tu respuesta. ¿El nombre ${state.getMyState().name} es correcto?`);
+        }
+
+    })
+.addAnswer('¿Cuál es el nombre de la empresa del cual nos contacta?',  {capture: true},
+    async(ctx, {state, flowDynamic, fallBack, endFlow}) => {
+            
+            if((ctx.body.toLowerCase().match(/salir|cancelar|terminar|finalizar|adios|chao/gi)) || (ctx.body === null)){
+                await state.update({exit: 1});
+                return endFlow('Se ha cancelado la cotización');
+            }
+    
+            if(state.getMyState().exit === 1){
+                return endFlow('Se ha cancelado la cotización');
+            }
+
+            if(state.getMyState().verifyCompany === 0){
+                // Implementa una validación de nombre de empresa con REGEX
+                const companyRegex = /^[a-zA-Z\s]{3,50}$/;
+                await state.update({company: ctx.body});
+                const company = state.getMyState().company;
+        
+                if(!companyRegex.test(company)){
+                    return fallBack('Por favor, ingresa un nombre de empresa válido');
+                }
+                await state.update({verifyCompany: 1});
+            }
+
+            if(state.getMyState().verifyCompany === 1){
+                await state.update({verifyCompany: 2});
+                return fallBack(`¿El nombre de la empresa ${state.getMyState().company} es correcto?`);
+            }
+
+            // Extraer si en la respuesta del usuario se encuentra la palabra "no" o "si" con REGEX sin importar mayúsculas o minúsculas
+            const response = ctx.body.toLowerCase();
+            const match = response.match(/no|si/gi);
+            const confirm = match ? match[0] : null;
+            console.log(confirm);
+
+            if(confirm === 'no'){
+                await state.update({verifyCompany: 0});
+                return fallBack('Por favor, ingresa el nombre de la empresa');
+            }
+
+            if(confirm === 'si'){
+                await state.update({exit: 0});
+                await state.update({verifyEmail: 0});
+                await flowDynamic(`De acuerdo a tu solicitud, el nombre de la empresa es ${state.getMyState().company}`);
+            }
+
+            if(confirm === null){
+                return fallBack(`Disculpa, no entendí tu respuesta. ¿El nombre de la empresa ${state.getMyState().company} es correcto?`);
+            }        
     })
 .addAnswer('¿Cuál es tu correo electrónico?',  {capture: true},
     async(ctx, {state, flowDynamic, fallBack, endFlow}) => {
@@ -114,13 +169,44 @@ const cotizarFlow = BotWhatsapp.addKeyword(['Cotizar', 'Cotización', 'Cotiza', 
         if(state.getMyState().exit === 1){
             return endFlow('Se ha cancelado la cotización');
         }
-        // Implemeta una validación de correo electrónico con REGEX
-        const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-        await state.update({email: ctx.body});
-        const email = state.getMyState().email;
-        if(!emailRegex.test(email)){
-            return fallBack('Por favor, ingresa un correo electrónico válido');
+
+        if(state.getMyState().verifyEmail === 0){
+            // Implementa una validación de correo electrónico con REGEX
+            const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+            await state.update({email: ctx.body});
+            const email = state.getMyState().email;
+    
+            if(!emailRegex.test(email)){
+                return fallBack('Por favor, ingresa un correo electrónico válido');
+            }
+            await state.update({verifyEmail: 1});
         }
+
+        if(state.getMyState().verifyEmail === 1){
+            await state.update({verifyEmail: 2});
+            return fallBack(`¿El correo electrónico ${state.getMyState().email} es correcto?`);
+        }
+
+        // Extraer si en la respuesta del usuario se encuentra la palabra "no" o "si" con REGEX sin importar mayúsculas o minúsculas
+        const response = ctx.body.toLowerCase();
+        const match = response.match(/no|si/gi);
+        const confirm = match ? match[0] : null;
+        console.log(confirm);
+
+        if(confirm === 'no'){
+            await state.update({verifyEmail: 0});
+            return fallBack('Por favor, ingresa el correo electrónico');
+        }
+
+        if(confirm === 'si'){
+            await state.update({exit: 0});
+            await flowDynamic(`De acuerdo a tu solicitud, el correo electrónico es ${state.getMyState().email}`);
+        }
+
+        if(confirm === null){
+            return fallBack(`Disculpa, no entendí tu respuesta. ¿El correo electrónico ${state.getMyState().email} es correcto?`);
+        }
+
     })
 .addAnswer('Gracias por proporcionar la información, en breve te enviaremos la cotización.');
 
