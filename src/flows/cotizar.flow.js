@@ -2,7 +2,12 @@ const BotWhatsapp = require('@bot-whatsapp/bot')
 
 const cotizarFlow = BotWhatsapp.addKeyword(['Cotizar', 'Cotización', 'Cotiza', 'Cotización de producto', 'Cotización de productos', 'Cotizar producto', 'Cotizar productos', 'Cotizar herramienta', 'Cotizar herramientas', 'Cotización de herramienta',])
 .addAnswer('¿Qué producto deseas cotizar? lo necesito para generar tu cotización',  {capture: true}, 
-    async(ctx, {state, flowDynamic, fallBack}) => {
+    async(ctx, {state, flowDynamic, fallBack, endFlow}) => {
+
+        if((ctx.body.toLowerCase().match(/salir|cancelar|terminar|finalizar|adios|chao/gi)) || (ctx.body === null)){
+            await state.update({exit: 1});
+            return endFlow('Se ha cancelado la cotización');
+        }
 
         if(ctx.body.length < 2){        
             return fallBack('Por favor, especifica el producto que deseas cotizar');
@@ -11,10 +16,24 @@ const cotizarFlow = BotWhatsapp.addKeyword(['Cotizar', 'Cotización', 'Cotiza', 
         await state.update({product: ctx.body});
  
         const product = state.getMyState().product;
-        await flowDynamic(`De acuerdo a tu solicitud, el producto que deseas cotizar es ${product}.`)
+
+        if(product){
+            await state.update({exit: 0});
+            await flowDynamic(`De acuerdo a tu solicitud, el producto que deseas cotizar es ${product}.`)
+        }
     })
 .addAnswer('¿Cuántas unidades necesitas?',  {capture: true},
-    async(ctx, {state, flowDynamic, fallBack}) => {
+    async(ctx, {state, flowDynamic, fallBack, endFlow}) => {
+
+        if((ctx.body.toLowerCase().match(/salir|cancelar|terminar|finalizar|adios|chao/gi)) || (ctx.body === null)){
+            await state.update({exit: 1});
+            return endFlow('Se ha cancelado la cotización');
+        }
+
+        if(state.getMyState().exit === 1){
+            return endFlow('Se ha cancelado la cotización');
+        }
+
         // Extrae el número de unidades de la respuesta del usuario
         // Validamos que el número de unidades sea mayor a 0 y que sea un número
         // De la cadena de texto extraeremos el número de unidades, por ejemplo: "Necesito 10 unidades" -> 10
@@ -29,14 +48,22 @@ const cotizarFlow = BotWhatsapp.addKeyword(['Cotizar', 'Cotización', 'Cotiza', 
         const quantity = state.getMyState().quantity;
         const product = state.getMyState().product;
 
-        await flowDynamic(`De acuerdo a tu solicitud, necesitas ${quantity} unidades de ${product}.`);
+        if(quantity && product){
+            await state.update({exit: 0});
+            await flowDynamic(`De acuerdo a tu solicitud, necesitas ${quantity} unidades de ${product}.`);
+        }
 
         await state.update({verifyName: 0});
     })
 .addAnswer('¿Cuál es tu nombre completo? o el nombre de la persona de contacto',  {capture: true},
     async(ctx, {state, flowDynamic, fallBack, endFlow}) => {
-        // Implementa una validación de nombre con REGEX
+
+        if((ctx.body.toLowerCase().match(/salir|cancelar|terminar|finalizar|adios|chao/gi)) || (ctx.body === null)){
+            await state.update({exit: 1});
+            return endFlow('Se ha cancelado la cotización');
+        }
         
+        // Implementa una validación de nombre con REGEX
         if (state.getMyState().verifyName === 0) {
             const nameRegex = /^[a-zA-Z\s]{3,50}$/;
             await state.update({name: ctx.body});
@@ -71,19 +98,19 @@ const cotizarFlow = BotWhatsapp.addKeyword(['Cotizar', 'Cotización', 'Cotiza', 
         }
 
         if(confirm === 'si'){
+            await state.update({exit: 2});
             await flowDynamic(`De acuerdo a tu solicitud, el nombre de la persona de contacto es ${state.getMyState().name}`);
-        }
-
-        // Verificar si existe ls palabra, salir, cancelar, terminar, finalizar, adios, chao o null en la respuesta del usuario
-        // Si existe alguna de estas palabras, finaliza el flujo y no sigue preguntando
-        if((ctx.body.toLowerCase().match(/salir|cancelar|terminar|finalizar|adios|chao/gi)) || (ctx.body === null)){
-            await state.update({exit: 1});
-            return endFlow('Se ha cancelado la cotización');
         }
 
     })
 .addAnswer('¿Cuál es tu correo electrónico?',  {capture: true},
     async(ctx, {state, flowDynamic, fallBack, endFlow}) => {
+
+        if((ctx.body.toLowerCase().match(/salir|cancelar|terminar|finalizar|adios|chao/gi)) || (ctx.body === null)){
+            await state.update({exit: 1});
+            return endFlow('Se ha cancelado la cotización');
+        }
+
         if(state.getMyState().exit === 1){
             return endFlow('Se ha cancelado la cotización');
         }
@@ -95,7 +122,7 @@ const cotizarFlow = BotWhatsapp.addKeyword(['Cotizar', 'Cotización', 'Cotiza', 
             return fallBack('Por favor, ingresa un correo electrónico válido');
         }
     })
-.addAnswer('Gracias por proporcionar la información, en breve te enviaremos la cotización.',);
+.addAnswer('Gracias por proporcionar la información, en breve te enviaremos la cotización.');
 
 
 
