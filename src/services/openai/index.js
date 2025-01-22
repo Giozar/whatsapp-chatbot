@@ -7,7 +7,7 @@ const openai = new OpenAI({
 
 const chatGPT = async ( name, history ) => {
 
-    const prompt = generatePrompt(name);
+    // const prompt = generatePrompt(name);
     // console.log('[PROMPT]', prompt);
     const completion = await openai.chat.completions.create({
         messages: [
@@ -17,7 +17,7 @@ const chatGPT = async ( name, history ) => {
             },
             ...history,
         ],
-        model: "gpt-3.5-turbo",
+        model: "gpt-4o-mini-2024-07-18",
         temperature: 0,
         max_tokens: 100,
     });
