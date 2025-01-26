@@ -17,6 +17,7 @@
         "@bot-whatsapp/provider": "latest",
         "@whiskeysockets/baileys": "6.5.0",
         "cache-manager": "5.2.4",
+        "groq-sdk": "^0.12.0",
         "openai": "^4.47.1",
         "wa-sticker-formatter": "4.4.4"
     },

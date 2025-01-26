@@ -1,41 +1,49 @@
-const BotWhatsapp =  require('@bot-whatsapp/bot');
-const chatGPT  = require('../services/openai');
+const BotWhatsapp = require('@bot-whatsapp/bot');
+const groq = require('../services/groq');
+const AgentReponse = require('../prompts/agentReponse');
+
+const agentReponse = new AgentReponse();
 
 const welcomeFlow = BotWhatsapp.addKeyword(BotWhatsapp.EVENTS.WELCOME)
-.addAction( async (ctx, {flowDynamic, state }) => {
+  .addAction(async (ctx, { flowDynamic, state }) => {
     try {
-        const newHistory = state.getMyState()?.history ?? [];
-        const username = ctx?.pushName ?? 'Usuario';
+      const newHistory = state.getMyState()?.history ?? [];
+      const username = ctx?.pushName ?? 'Usuario';
 
-        console.log('[Historial]: ', newHistory);
-        
-        newHistory.push({
-            role: 'user',
-            content: ctx.body
-        });
+      newHistory.push({
+        role: 'user',
+        content: ctx.body
+      });
 
-        console.log('[Mensaje Entrante]: ', ctx.body);
+      /* console.log('[Historial]: ', newHistory);
+      console.log('[Mensaje Entrante]: ', ctx.body); */
 
-        const ai = await chatGPT(username, newHistory);
+      const agentResponse = agentReponse.generateResponse(username, ctx.body);
+      agentReponse.setFirst(false);
+      const ai = await groq(agentResponse);
 
-        // Divide el texto en fragmentos de texto de acuerdo a los puntos y saltos de línea: 
-        const chunks = ai.split(/(?<!\d)\.\s+/g);
+      // Divide el texto en fragmentos de texto de acuerdo a los puntos y saltos de línea: 
+      const chunks = ai.split(/(?<!\d)\.\s+/g);
 
+      // Genera un retraso aleatorio entre 3 y 15 segundos
+      const delay = Math.floor(Math.random() * (15000 - 3000 + 1)) + 3000;
+
+      setTimeout(async () => {
         for (const chunk of chunks) {
-            await flowDynamic(chunk);
+          await flowDynamic(chunk);
         }
 
-
         newHistory.push({
-            role: 'assistant',
-            content: ai
+          role: 'assistant',
+          content: ai
         });
 
-        await state.update({hsitory: newHistory});
+        await state.update({ hsitory: newHistory });
+      }, delay);
 
     } catch (error) {
-        console.log(error);
+      console.log(error);
     }
-})
+  })
 
 module.exports = welcomeFlow

@@ -4,9 +4,6 @@ const adapterProvider = require('./providers')
 const adapterDB = require('./database')
 const QRPortalWeb = require('@bot-whatsapp/portal')
 
-
-
-
 const main = async () => {
 
     BotWhatsapp.createBot({
