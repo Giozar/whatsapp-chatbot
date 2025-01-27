@@ -1,6 +1,6 @@
 class AgentReponse {
   constructor() {
-    this.temperament = "Responde en español mexicano, como si fueras una persona llamada Roger, estas hablando con tu mejor amigo, emplea mensajes cortos , amables.";
+    this.temperament = "Responde en español mexicano, estas hablando con tu mejor amigo, emplea mensajes cortos , amables.";
     this.context = "El nombre de tu amigo es {name}";
     this.messageResponse = "el mensaje a responder es: {message}"
     this.isFirst = true;
