@@ -1,0 +1,67 @@
+[2026-04-19T15:37:50.341Z] Connection update: connecting
+[2026-04-19T15:40:09.039Z] Connection update: connecting
+[2026-04-19T15:41:44.579Z] Connection update: connecting
+[2026-04-19T15:41:44.602Z] Uncaught Exception: [Error: ENOENT: no such file or directory, open '/mnt/storage/development/nodejs/whatsapp-chatbot/bot.qr.png'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/mnt/storage/development/nodejs/whatsapp-chatbot/bot.qr.png'
+}
+[2026-04-19T15:43:13.675Z] Connection update: connecting
+[2026-04-19T15:43:15.926Z] Connection update: close
+[2026-04-19T15:43:15.926Z] Connection closed. Status: 405, Reason: Connection Failure
+[2026-04-19T15:43:15.926Z] Critical error, stopping reconnection attempts
+[2026-04-19T15:43:21.842Z] Uncaught Exception: [Error: ENOENT: no such file or directory, open '/mnt/storage/development/nodejs/whatsapp-chatbot/bot.qr.png'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/mnt/storage/development/nodejs/whatsapp-chatbot/bot.qr.png'
+}
+[2026-04-19T15:43:35.475Z] Connection update: connecting
+[2026-04-19T15:43:39.016Z] Iniciando limpieza de recursos...
+[2026-04-19T15:45:55.577Z] Connection update: connecting
+[2026-04-19T15:50:45.223Z] Connection update: connecting
+[2026-04-19T15:51:48.380Z] Connection update: connecting
+[2026-04-19T16:00:28.530Z] Connection update: connecting
+[2026-04-19T16:00:29.350Z] Connection update: undefined
+[2026-04-19T16:00:29.350Z] QR Code received
+[2026-04-19T16:00:44.121Z] Iniciando limpieza de recursos...
+[2026-04-19T16:00:45.311Z] Connection update: connecting
+[2026-04-19T16:01:04.188Z] Connection update: connecting
+[2026-04-19T16:01:05.699Z] Connection update: close
+[2026-04-19T16:01:05.699Z] Connection closed. Status: 405, Reason: Connection Failure
+[2026-04-19T16:01:05.699Z] Critical error, stopping reconnection attempts
+[2026-04-19T16:01:09.286Z] Iniciando limpieza de recursos...
+[2026-04-19T16:02:42.379Z] Connection update: connecting
+[2026-04-19T16:02:43.085Z] Connection update: close
+[2026-04-19T16:02:43.085Z] Connection closed. Status: 405, Reason: Connection Failure
+[2026-04-19T16:02:43.085Z] Critical error, stopping reconnection attempts
+[2026-04-19T16:02:47.202Z] Iniciando limpieza de recursos...
+[2026-04-19T16:03:17.068Z] Connection update: connecting
+[2026-04-19T16:03:17.478Z] Connection update: undefined
+[2026-04-19T16:03:17.478Z] QR Code received
+[2026-04-19T16:03:57.521Z] Connection update: undefined
+[2026-04-19T16:03:57.521Z] QR Code received
+[2026-04-19T16:04:37.538Z] Connection update: undefined
+[2026-04-19T16:04:37.538Z] QR Code received
+[2026-04-19T16:05:17.557Z] Connection update: undefined
+[2026-04-19T16:05:17.557Z] QR Code received
+[2026-04-19T16:05:57.577Z] Connection update: undefined
+[2026-04-19T16:05:57.577Z] QR Code received
+[2026-04-19T16:06:37.595Z] Connection update: undefined
+[2026-04-19T16:06:37.595Z] QR Code received
+[2026-04-19T16:06:47.422Z] Connection update: close
+[2026-04-19T16:06:47.422Z] Connection closed. Status: 428, Reason: Connection Terminated by Server
+[2026-04-19T16:06:47.422Z] Reconnection attempt 1/10 in 1000ms
+[2026-04-19T16:06:48.449Z] Connection update: connecting
+[2026-04-19T16:06:48.584Z] Iniciando limpieza de recursos...
+[2026-04-19T16:06:49.856Z] Connection update: connecting
+[2026-04-19T16:06:53.721Z] Connection update: connecting
+[2026-04-19T16:15:44.792Z] Connection update: connecting
+[2026-04-19T16:15:45.338Z] Connection update: undefined
+[2026-04-19T16:15:45.338Z] QR Code received
+[2026-04-19T16:16:03.904Z] Iniciando limpieza de recursos...
+[2026-04-19T16:21:47.780Z] Connection update: connecting
+[2026-04-19T16:21:48.760Z] Connection update: undefined
+[2026-04-19T16:21:48.760Z] QR Code received
+[2026-04-19T16:22:07.947Z] Iniciando limpieza de recursos...

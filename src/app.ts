@@ -4,11 +4,14 @@ import { BaileysProvider as Provider } from '@builderbot/provider-baileys'
 import { welcomeFlow } from './flows/welcome.flow'
 
 const PORT = process.env.PORT ?? 3008
-
 const main = async () => {
     const adapterFlow = createFlow([welcomeFlow])
-    
-    const adapterProvider = createProvider(Provider)
+
+    // Añade el objeto de configuración con la versión
+    const adapterProvider = createProvider(Provider, {
+        version: [2, 3000, 1035824857]
+    })
+
     const adapterDB = new Database()
 
     const { httpServer } = await createBot({
