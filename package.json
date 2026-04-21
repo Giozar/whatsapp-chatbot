@@ -16,18 +16,19 @@
     "@builderbot/bot": "1.4.1",
     "@builderbot/provider-baileys": "1.4.1",
     "groq-sdk": "^0.12.0",
+    "ollama": "^0.6.3",
     "openai": "^4.80.1"
   },
   "devDependencies": {
     "@types/node": "^25.0.0",
-    "typescript-eslint": "^8.0.0",
     "eslint": "^9.0.0",
     "eslint-plugin-builderbot": "latest",
-    "rollup": "^4.60.2",
     "nodemon": "^3.1.11",
+    "rollup": "^4.60.2",
     "rollup-plugin-typescript2": "^0.37.0",
     "tsx": "^4.7.1",
-    "typescript": "^5.4.3"
+    "typescript": "^5.4.3",
+    "typescript-eslint": "^8.0.0"
   },
   "author": "",
   "license": "ISC"

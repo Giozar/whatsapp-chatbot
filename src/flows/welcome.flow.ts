@@ -1,6 +1,7 @@
 import { addKeyword, EVENTS } from '@builderbot/bot';
-import { GroqService } from '../services/groq';
+// import { GroqService } from '../services/groq';
 // import { ChatGPTService } from '~/services/openai';
+import { OllamaService } from '~/services/ollama';
 
 export const welcomeFlow = addKeyword(EVENTS.WELCOME).addAction(
   async (ctx, { flowDynamic, state }) => {
@@ -19,7 +20,7 @@ export const welcomeFlow = addKeyword(EVENTS.WELCOME).addAction(
       console.log(conversationHistory);
 
       // Llamamos a servicio de AI
-      const aiResponse = await GroqService({
+      const aiResponse = await OllamaService({
         username,
         history: conversationHistory,
       });
