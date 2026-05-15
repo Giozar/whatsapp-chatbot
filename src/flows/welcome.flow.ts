@@ -1,7 +1,5 @@
 import { addKeyword, EVENTS } from '@builderbot/bot';
-// import { GroqService } from '../services/groq';
-// import { ChatGPTService } from '~/services/openai';
-import { OllamaService } from '~/services/ollama';
+import { OllamaService } from '~/services/ollama.service';
 
 export const welcomeFlow = addKeyword(EVENTS.WELCOME).addAction(
   async (ctx, { flowDynamic, state }) => {
@@ -9,7 +7,7 @@ export const welcomeFlow = addKeyword(EVENTS.WELCOME).addAction(
       const conversationHistory = state.getMyState()?.history ?? [];
       const username = ctx?.pushName ?? 'Usuario';
 
-      console.log(username);
+      console.log(` [${username}] ha iniciado una conversación.`);
 
       // Añadir el mensaje del usuario al historial
       conversationHistory.push({
@@ -36,7 +34,7 @@ export const welcomeFlow = addKeyword(EVENTS.WELCOME).addAction(
 
         // Añadimos la respuesta de la IA al historial
         conversationHistory.push({
-          role: 'system',
+          role: 'assistant',
           content: aiResponse,
         });
 
