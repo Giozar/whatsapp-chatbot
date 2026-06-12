@@ -2,10 +2,11 @@ import { createBot, createProvider, createFlow } from '@builderbot/bot'
 import { MemoryDB as Database } from '@builderbot/bot'
 import { BaileysProvider as Provider } from '@builderbot/provider-baileys'
 import { welcomeFlow } from './flows/welcome.flow'
+import { voiceNoteFlow } from './flows/voice-note.flow'
 
 const PORT = process.env.PORT ?? 3008
 const main = async () => {
-    const adapterFlow = createFlow([welcomeFlow])
+    const adapterFlow = createFlow([voiceNoteFlow, welcomeFlow])
 
     // Añade el objeto de configuración con la versión
     const adapterProvider = createProvider(Provider, {
