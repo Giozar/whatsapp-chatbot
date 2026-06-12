@@ -1,4 +1,4 @@
-// services/transcription.interface.ts
+// audio/interfaces/transcription.interface.ts
 
 export interface ITranscriptionService {
   transcribe(audioBuffer: Buffer, mimeType?: string): Promise<string>;

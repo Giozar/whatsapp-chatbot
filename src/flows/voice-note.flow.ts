@@ -3,10 +3,13 @@
 import { addKeyword, EVENTS } from '@builderbot/bot';
 import { readFileSync } from 'fs';
 import { OllamaService } from '~/services/ollama.service';
-import type { ITranscriptionService } from '~/services/transcription.interface';
-import { GroqTranscriptionService } from '~/services/groq-transcription.service';
+import type { ITranscriptionService } from '~/audio/interfaces/transcription.interface';
+import type { IAudioStorageService } from '~/audio/interfaces/audio-storage.interface';
+import { createTranscriptionService } from '~/audio/factories/transcription.factory';
+import { LocalAudioStorageService } from '~/audio/services/local-audio-storage.service';
 
-const transcriptionService: ITranscriptionService = new GroqTranscriptionService();
+const transcriptionService: ITranscriptionService = createTranscriptionService();
+const audioStorage: IAudioStorageService = new LocalAudioStorageService();
 
 export const voiceNoteFlow = addKeyword(EVENTS.VOICE_NOTE).addAction(
   async (ctx, { flowDynamic, state, provider }) => {
@@ -14,8 +17,11 @@ export const voiceNoteFlow = addKeyword(EVENTS.VOICE_NOTE).addAction(
       const username = ctx?.pushName ?? 'Usuario';
       console.log(`[${username}] ha enviado una nota de voz.`);
 
-      // 1. Download the audio file from WhatsApp using provider.saveFile
-      const audioPath = await provider.saveFile(ctx, { path: '/tmp' });
+      // 1. Guardar el audio en la carpeta del usuario (storage/audios/<usuario>/)
+      const userDir = await audioStorage.prepareUserDir(ctx.from, username);
+      const audioPath = await provider.saveFile(ctx, { path: userDir });
+      console.log(`[${username}] audio guardado en: ${audioPath}`);
+
       const audioBuffer = readFileSync(audioPath);
       const mimeType: string = ctx.message?.audioMessage?.mimetype ?? 'audio/ogg';
 

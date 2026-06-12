@@ -1,7 +1,7 @@
-// services/groq-transcription.service.ts
+// audio/services/groq-transcription.service.ts
 
 import { Groq, toFile } from 'groq-sdk';
-import type { ITranscriptionService } from './transcription.interface';
+import type { ITranscriptionService } from '~/audio/interfaces/transcription.interface';
 
 export class GroqTranscriptionService implements ITranscriptionService {
   private readonly groq: Groq;

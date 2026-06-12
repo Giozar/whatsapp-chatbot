@@ -1,0 +1,9 @@
+allowBuilds:
+  '@ffmpeg-installer/darwin-arm64': true
+  baileys: true
+  esbuild: true
+  onnxruntime-node: true
+  protobufjs: true
+  sharp: true
+
+blockExoticSubdeps: false
