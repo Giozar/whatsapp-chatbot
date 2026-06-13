@@ -1,13 +1,10 @@
-import { createBot, createProvider, createFlow } from '@builderbot/bot'
+import { createBot, createProvider } from '@builderbot/bot'
 import { MemoryDB as Database } from '@builderbot/bot'
 import { BaileysProvider as Provider } from '@builderbot/provider-baileys'
-import { welcomeFlow } from './flows/welcome.flow'
-import { voiceNoteFlow } from './flows/voice-note.flow'
+import { flows } from './flows'
+import { appConfig } from '~/shared/config/app-config'
 
-const PORT = process.env.PORT ?? 3008
 const main = async () => {
-    const adapterFlow = createFlow([voiceNoteFlow, welcomeFlow])
-
     // Añade el objeto de configuración con la versión
     const adapterProvider = createProvider(Provider, {
         version: [2, 3000, 1035824857]
@@ -16,12 +13,12 @@ const main = async () => {
     const adapterDB = new Database()
 
     const { httpServer } = await createBot({
-        flow: adapterFlow,
+        flow: flows,
         provider: adapterProvider,
         database: adapterDB,
     })
 
-    httpServer(+PORT)
+    httpServer(appConfig.server.port)
 }
 
 main()

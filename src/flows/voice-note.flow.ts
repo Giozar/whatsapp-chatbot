@@ -1,59 +1,61 @@
 // flows/voice-note.flow.ts
-
 import { addKeyword, EVENTS } from '@builderbot/bot';
 import { readFileSync } from 'fs';
-import { OllamaService } from '~/services/ollama.service';
-import type { ITranscriptionService } from '~/audio/interfaces/transcription.interface';
-import type { IAudioStorageService } from '~/audio/interfaces/audio-storage.interface';
-import { createTranscriptionService } from '~/audio/factories/transcription.factory';
-import { LocalAudioStorageService } from '~/audio/services/local-audio-storage.service';
+import { createConversationService } from '~/features/chat/factories/conversation.factory';
+import { splitResponseIntoChunks } from '~/features/chat/utils/split-response';
+import type { IAudioStorageService } from '~/features/voice/interfaces/audio-storage.interface';
+import type { ITranscriptionService } from '~/features/voice/interfaces/transcription.interface';
+import { createAudioStorageService } from '~/features/voice/factories/audio-storage.factory';
+import { createTranscriptionService } from '~/features/voice/factories/transcription.factory';
+import { appConfig } from '~/shared/config/app-config';
 
 const transcriptionService: ITranscriptionService = createTranscriptionService();
-const audioStorage: IAudioStorageService = new LocalAudioStorageService();
+const audioStorage: IAudioStorageService = createAudioStorageService();
+const conversationService = createConversationService();
+const randomDelay = () =>
+    Math.floor(
+        Math.random() * (appConfig.reply.maxDelayMs - appConfig.reply.minDelayMs + 1)
+    ) + appConfig.reply.minDelayMs;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const voiceNoteFlow = addKeyword(EVENTS.VOICE_NOTE).addAction(
-  async (ctx, { flowDynamic, state, provider }) => {
-    try {
-      const username = ctx?.pushName ?? 'Usuario';
-      console.log(`[${username}] ha enviado una nota de voz.`);
+    async (ctx, { flowDynamic, state, provider }) => {
+        try {
+            const username = ctx?.pushName ?? 'Usuario';
+            console.log(`[${username}] ha enviado una nota de voz.`);
 
-      // 1. Guardar el audio en la carpeta del usuario (storage/audios/<usuario>/)
-      const userDir = await audioStorage.prepareUserDir(ctx.from, username);
-      const audioPath = await provider.saveFile(ctx, { path: userDir });
-      console.log(`[${username}] audio guardado en: ${audioPath}`);
+            const userDir = await audioStorage.prepareUserDir(ctx.from, username);
+            const audioPath = await provider.saveFile(ctx, { path: userDir });
+            console.log(`[${username}] audio guardado en: ${audioPath}`);
 
-      const audioBuffer = readFileSync(audioPath);
-      const mimeType: string = ctx.message?.audioMessage?.mimetype ?? 'audio/ogg';
+            const audioBuffer = readFileSync(audioPath);
+            const mimeType = ctx.message?.audioMessage?.mimetype ?? 'audio/ogg';
+            const transcribedText = await transcriptionService.transcribe(audioBuffer, mimeType);
 
-      // 2. Transcribe with the injected service
-      const transcribedText = await transcriptionService.transcribe(audioBuffer, mimeType);
-      console.log(`[${username}] Transcripción: "${transcribedText}"`);
+            console.log(`[${username}] Transcripción: "${transcribedText}"`);
 
-      if (!transcribedText) {
-        await flowDynamic('no entendí bien lo que dijiste, puedes escribirlo?');
-        return;
-      }
+            if (!transcribedText) {
+                await flowDynamic('no entendi bien lo que dijiste, puedes escribirlo?');
+                return;
+            }
 
-      // 3. Pass transcription through AI service — same pipeline as text
-      const conversationHistory = state.getMyState()?.history ?? [];
-      conversationHistory.push({ role: 'user', content: transcribedText });
+            const history = state.getMyState()?.history ?? [];
+            const { response, history: nextHistory } = await conversationService.generateReply({
+                username,
+                incomingText: transcribedText,
+                history,
+            });
 
-      const aiResponse = await OllamaService({ username, history: conversationHistory });
+            await sleep(randomDelay());
 
-      const chunks = aiResponse.split(/(?<!\d)\.\s+/g);
-      const delay = Math.floor(Math.random() * (15000 - 3000 + 1)) + 3000;
+            for (const chunk of splitResponseIntoChunks(response)) {
+                await flowDynamic(chunk);
+            }
 
-      setTimeout(async () => {
-        for (const chunk of chunks) {
-          await flowDynamic(chunk);
+            await state.update({ history: nextHistory });
+        } catch (error) {
+            console.error('[Error en voiceNoteFlow]', error);
+            await flowDynamic('tuve un problema procesando tu mensaje de voz');
         }
-        conversationHistory.push({ role: 'assistant', content: aiResponse });
-        await state.update({ history: conversationHistory });
-      }, delay);
-
-    } catch (error) {
-      console.error('[Error en voiceNoteFlow]', error);
-      await flowDynamic('tuve un problema procesando tu mensaje de voz');
     }
-  }
 );

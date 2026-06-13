@@ -1,48 +1,38 @@
 import { addKeyword, EVENTS } from '@builderbot/bot';
-import { OllamaService } from '~/services/ollama.service';
+import { createConversationService } from '~/features/chat/factories/conversation.factory';
+import { appConfig } from '~/shared/config/app-config';
+import { splitResponseIntoChunks } from '~/features/chat/utils/split-response';
+
+const conversationService = createConversationService();
+const randomDelay = () =>
+    Math.floor(
+        Math.random() * (appConfig.reply.maxDelayMs - appConfig.reply.minDelayMs + 1)
+    ) + appConfig.reply.minDelayMs;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const welcomeFlow = addKeyword(EVENTS.WELCOME).addAction(
-  async (ctx, { flowDynamic, state }) => {
-    try {
-      const conversationHistory = state.getMyState()?.history ?? [];
-      const username = ctx?.pushName ?? 'Usuario';
+    async (ctx, { flowDynamic, state }) => {
+        try {
+            const history = state.getMyState()?.history ?? [];
+            const username = ctx?.pushName ?? 'Usuario';
 
-      console.log(` [${username}] ha iniciado una conversación.`);
+            console.log(`[${username}] ha enviado un mensaje: ${ctx.body}`);
 
-      // Añadir el mensaje del usuario al historial
-      conversationHistory.push({
-        role: 'user',
-        content: ctx.body,
-      });
+            const { response, history: nextHistory } = await conversationService.generateReply({
+                username,
+                incomingText: ctx.body,
+                history,
+            });
 
-      console.log(conversationHistory);
+            await sleep(randomDelay());
 
-      // Llamamos a servicio de AI
-      const aiResponse = await OllamaService({
-        username,
-        history: conversationHistory,
-      });
+            for (const chunk of splitResponseIntoChunks(response)) {
+                await flowDynamic(chunk);
+            }
 
-      // Partimos respuesta en chunks
-      const chunks = aiResponse.split(/(?<!\d)\.\s+/g);
-      const delay = Math.floor(Math.random() * (15000 - 3000 + 1)) + 3000;
-
-      setTimeout(async () => {
-        for (const chunk of chunks) {
-          await flowDynamic(chunk);
+            await state.update({ history: nextHistory });
+        } catch (error) {
+            console.error('[Error en welcomeFlow]', error);
         }
-
-        // Añadimos la respuesta de la IA al historial
-        conversationHistory.push({
-          role: 'assistant',
-          content: aiResponse,
-        });
-
-        // Guardamos en el state
-        await state.update({ history: conversationHistory });
-      }, delay);
-    } catch (error) {
-      console.error('[Error en welcomeFlow]', error);
     }
-  }
 );
