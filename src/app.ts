@@ -5,20 +5,52 @@ import { flows } from './flows'
 import { appConfig } from '~/shared/config/app-config'
 
 const main = async () => {
-    // Añade el objeto de configuración con la versión
     const adapterProvider = createProvider(Provider, {
         version: [2, 3000, 1035824857]
     })
 
     const adapterDB = new Database()
 
-    const { httpServer } = await createBot({
+    const bot = await createBot({
         flow: flows,
         provider: adapterProvider,
         database: adapterDB,
     })
 
-    httpServer(appConfig.server.port)
+    bot.httpServer(appConfig.server.port)
+
+    let isShuttingDown = false
+
+    const shutdown = async (signal: string) => {
+        if (isShuttingDown) return
+        isShuttingDown = true
+
+        console.log(`[shutdown] señal ${signal} recibida, cerrando...`)
+
+        // Force-exit si la limpieza se cuelga
+        const forceExit = setTimeout(() => {
+            console.log('[shutdown] timeout alcanzado, forzando salida')
+            process.exit(1)
+        }, 3000)
+        forceExit.unref()
+
+        try {
+            await adapterProvider.vendor?.end?.(undefined)
+            await adapterProvider.releaseSessionFiles?.()
+        } catch {
+            // best-effort
+        } finally {
+            clearTimeout(forceExit)
+            console.log('[shutdown] listo')
+            process.exit(0)
+        }
+    }
+
+    process.on('SIGINT', () => shutdown('SIGINT'))
+    process.on('SIGTERM', () => shutdown('SIGTERM'))
 }
 
-main()
+main().catch((err) => {
+    console.error('[fatal] error al iniciar el bot', err)
+    process.exit(1)
+})

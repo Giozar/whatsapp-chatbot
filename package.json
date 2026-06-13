@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node ./dist/app.js",
     "lint": "eslint . --no-ignore",
-    "dev": "npm run lint && nodemon --env-file=.env --signal SIGKILL ./src/app.ts",
+    "dev": "npm run lint && nodemon --env-file=.env --signal SIGTERM ./src/app.ts",
     "build": "npx rollup -c",
     "clean:macos": "lsof -ti:3008 | xargs kill -9 2>/dev/null; rm -rf bot_sessions bot.qr.png",
     "clean:linux": "fuser -k 3008/tcp; rm -rf bot_sessions bot.qr.png",
