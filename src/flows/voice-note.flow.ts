@@ -3,6 +3,7 @@ import { addKeyword, EVENTS } from '@builderbot/bot';
 import { readFileSync } from 'fs';
 import { createConversationService } from '~/features/chat/factories/conversation.factory';
 import { splitResponseIntoChunks } from '~/features/chat/utils/split-response';
+import { printConversationHistory } from '~/features/chat/utils/print-history';
 import type { IAudioStorageService } from '~/features/voice/interfaces/audio-storage.interface';
 import type { ITranscriptionService } from '~/features/voice/interfaces/transcription.interface';
 import { createAudioStorageService } from '~/features/voice/factories/audio-storage.factory';
@@ -39,12 +40,17 @@ export const voiceNoteFlow = addKeyword(EVENTS.VOICE_NOTE).addAction(
                 return;
             }
 
-            const history = state.getMyState()?.history ?? [];
-            const { response, history: nextHistory } = await conversationService.generateReply({
-                username,
-                incomingText: transcribedText,
-                history,
-            });
+            const currentState = state.getMyState() ?? {};
+            const history = currentState.history ?? [];
+            const summary = currentState.summary as string | undefined;
+
+            const { response, history: nextHistory, summary: nextSummary, didSummarize } =
+                await conversationService.generateReply({
+                    username,
+                    incomingText: transcribedText,
+                    history,
+                    summary,
+                });
 
             await sleep(randomDelay());
 
@@ -52,7 +58,15 @@ export const voiceNoteFlow = addKeyword(EVENTS.VOICE_NOTE).addAction(
                 await flowDynamic(chunk);
             }
 
-            await state.update({ history: nextHistory });
+            await state.update({ history: nextHistory, summary: nextSummary });
+
+            printConversationHistory({
+                userId: ctx.from,
+                username,
+                history: nextHistory,
+                summary: nextSummary,
+                didSummarize,
+            });
         } catch (error) {
             console.error('[Error en voiceNoteFlow]', error);
             await flowDynamic('tuve un problema procesando tu mensaje de voz');

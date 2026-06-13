@@ -116,6 +116,14 @@ export const appConfig = {
     server: {
         port: parseNumber('PORT', 3008),
     },
+    chat: {
+        history: {
+            summaryEnabled: parseBoolean('HISTORY_SUMMARY_ENABLED', true),
+            maxMessages: parseNumber('HISTORY_MAX_MESSAGES', 20),
+            keepRecentMessages: parseNumber('HISTORY_KEEP_RECENT', 8),
+            logHistory: parseBoolean('HISTORY_LOG_ENABLED', true),
+        },
+    },
     llm: {
         mode: llmMode,
         provider: llmProvider as LLMProvider,
@@ -163,4 +171,8 @@ export const appConfig = {
 
 if (appConfig.reply.minDelayMs > appConfig.reply.maxDelayMs) {
     throw new Error('[config] REPLY_MIN_DELAY_MS must be less than or equal to REPLY_MAX_DELAY_MS');
+}
+
+if (appConfig.chat.history.keepRecentMessages >= appConfig.chat.history.maxMessages) {
+    throw new Error('[config] HISTORY_KEEP_RECENT must be less than HISTORY_MAX_MESSAGES');
 }
