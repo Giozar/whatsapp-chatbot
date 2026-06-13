@@ -30,7 +30,7 @@ src/
 
 1. `welcome.flow.ts` recibe el mensaje.
 2. El flow carga el historial del usuario desde `state`.
-3. `ConversationService` agrega el mensaje, construye el prompt y llama al LLM seleccionado por factory.
+3. `ConversationService` agrega el mensaje, toma el nombre desde `ctx.pushName`, construye el prompt y llama al LLM seleccionado por factory.
 4. La respuesta se divide en chunks y se envia al usuario.
 5. El historial actualizado se guarda en `state`.
 
@@ -69,6 +69,8 @@ AI_MODEL=llama3.2:latest
 - `OLLAMA_MODEL` es la variable recomendada.
 - `AI_MODEL` se mantiene como alias legacy por compatibilidad.
 - `USES_MODELFILE=true` evita agregar el system prompt porque se asume que el modelo ya trae instrucciones.
+- Cuando `USES_MODELFILE=false`, el nombre del usuario se agrega al system prompt.
+- Cuando `USES_MODELFILE=true`, el nombre del usuario y el resumen viajan como contexto transitorio de tipo `user` para no interferir con el Modelfile.
 
 ### LLM cloud
 

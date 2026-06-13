@@ -23,6 +23,8 @@ Para `LLM_MODE=local` se usa Ollama y debes definir `OLLAMA_MODEL`, `OLLAMA_HOST
 
 Para `VOICE_MODE=local` se usa Whisper local y basta con `WHISPER_MODEL`; el modelo se descarga en el primer uso a `MODEL_CACHE_DIR`. Para `VOICE_MODE=cloud` se usa Groq y necesitas `GROQ_API_KEY` y `GROQ_TRANSCRIPTION_MODEL`.
 
+El bot toma el nombre del usuario desde `ctx.pushName`. Si `USES_MODELFILE=false`, ese nombre entra al `system prompt`. Si `USES_MODELFILE=true`, el nombre viaja como contexto transitorio de usuario para no reemplazar el prompt del Modelfile.
+
 Revisa [example.env](example.env) para la plantilla completa.
 
 ## Desarrollo

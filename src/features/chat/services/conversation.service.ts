@@ -36,7 +36,11 @@ export class ConversationService {
             { role: 'user', content: incomingText },
         ];
 
-        const messages = this.messageBuilder.buildMessages(historyWithUser, summary);
+        const messages = this.messageBuilder.buildMessages({
+            history: historyWithUser,
+            username,
+            summary,
+        });
         const response = await this.llmService.generateResponse({ username, messages });
 
         const fullHistory: ChatMessage[] = [
