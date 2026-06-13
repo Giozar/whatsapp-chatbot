@@ -96,6 +96,18 @@ const groqModel = readEnv('GROQ_MODEL');
 const groqApiKey = readEnv('GROQ_API_KEY');
 const groqTranscriptionModel =
     readEnv('GROQ_TRANSCRIPTION_MODEL') ?? 'whisper-large-v3-turbo';
+const visionEnabled = parseBoolean('VISION_ENABLED', false);
+const visionModelMultimodal = parseBoolean('VISION_MODEL_MULTIMODAL', true);
+const visionUseTextModel = parseBoolean('VISION_USE_TEXT_MODEL', true);
+const ollamaVisionModel = readEnv('OLLAMA_VISION_MODEL');
+const openaiVisionModel = readEnv('OPENAI_VISION_MODEL');
+const groqVisionModel = readEnv('GROQ_VISION_MODEL');
+
+if (visionEnabled && !visionModelMultimodal) {
+    throw new Error(
+        '[config] VISION_MODEL_MULTIMODAL must be "true" when VISION_ENABLED=true'
+    );
+}
 
 if (llmMode === 'cloud' && llmProvider === 'openai') {
     requireEnv('OPENAI_API_KEY', 'required when LLM_MODE=cloud and LLM_PROVIDER=openai');
@@ -110,6 +122,29 @@ if (llmMode === 'cloud' && llmProvider === 'groq') {
 if (voiceMode === 'cloud') {
     requireEnv('GROQ_API_KEY', 'required when VOICE_MODE=cloud');
     requireEnv('GROQ_TRANSCRIPTION_MODEL', 'required when VOICE_MODE=cloud');
+}
+
+if (visionEnabled && !visionUseTextModel) {
+    if (llmMode === 'local') {
+        requireEnv(
+            'OLLAMA_VISION_MODEL',
+            'required when VISION_ENABLED=true, LLM_MODE=local and VISION_USE_TEXT_MODEL=false'
+        );
+    }
+
+    if (llmMode === 'cloud' && llmProvider === 'openai') {
+        requireEnv(
+            'OPENAI_VISION_MODEL',
+            'required when VISION_ENABLED=true, LLM_MODE=cloud, LLM_PROVIDER=openai and VISION_USE_TEXT_MODEL=false'
+        );
+    }
+
+    if (llmMode === 'cloud' && llmProvider === 'groq') {
+        requireEnv(
+            'GROQ_VISION_MODEL',
+            'required when VISION_ENABLED=true, LLM_MODE=cloud, LLM_PROVIDER=groq and VISION_USE_TEXT_MODEL=false'
+        );
+    }
 }
 
 export const appConfig = {
@@ -161,6 +196,27 @@ export const appConfig = {
         },
         storage: {
             audioDir: toAbsolutePath(readEnv('AUDIO_STORAGE_DIR') ?? 'storage/audios'),
+        },
+    },
+    vision: {
+        enabled: visionEnabled,
+        modelMultimodal: visionModelMultimodal,
+        useTextModel: visionUseTextModel,
+        local: {
+            provider: 'ollama' as const,
+            model: ollamaVisionModel,
+        },
+        cloud: {
+            provider: llmProvider === 'ollama' ? null : llmProvider,
+            openai: {
+                model: openaiVisionModel,
+            },
+            groq: {
+                model: groqVisionModel,
+            },
+        },
+        storage: {
+            mediaDir: toAbsolutePath(readEnv('MEDIA_STORAGE_DIR') ?? 'storage/media'),
         },
     },
     reply: {

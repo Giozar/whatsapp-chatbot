@@ -6,7 +6,9 @@
 
 - Recibir y responder mensajes de texto en tiempo real
 - Entender notas de voz: transcribirlas a texto y responderlas como cualquier mensaje
+- Interpretar imagenes y stickers con modelos multimodales locales o cloud
 - Guardar los audios recibidos organizados en una carpeta por usuario
+- Guardar imagenes/stickers recibidos organizados en una carpeta por usuario
 - Mantener historial de conversacion por usuario (aislado en memoria)
 - Resumir automaticamente el historial cuando crece demasiado
 - Imprimir el historial completo de cada usuario en consola para observabilidad
@@ -32,6 +34,11 @@ BuilderBot Framework
             |-- LocalAudioStorageService  →  storage/audios/<usuario>/
             |-- TranscriptionService (Whisper local | Groq Whisper)
             |-- ConversationService (mismo pipeline que texto)
+    |
+    |-- Media Flow (imagen/sticker)
+            |-- LocalMediaStorageService  →  storage/media/<usuario>/
+            |-- LLMService.generateVisionResponse (Ollama | OpenAI | Groq)
+            |-- ConversationService (mismo historial/resumen que texto)
 ```
 
 ---
@@ -43,6 +50,7 @@ src/
 ├── app.ts                                        # Entrada, graceful shutdown
 ├── flows/
 │   ├── index.ts                                  # Registro de flows en BuilderBot
+│   ├── media.flow.ts                             # Flow de imagenes y stickers
 │   ├── welcome.flow.ts                           # Flow de mensajes de texto
 │   └── voice-note.flow.ts                        # Flow de notas de voz
 ├── features/
@@ -70,6 +78,15 @@ src/
 │   │       ├── groq-llm.service.ts               # Adaptador Groq
 │   │       ├── ollama-llm.service.ts             # Adaptador Ollama
 │   │       └── openai-llm.service.ts             # Adaptador OpenAI
+│   ├── media/
+│   │   ├── factories/
+│   │   │   └── media-storage.factory.ts          # Crea IMediaStorageService
+│   │   ├── interfaces/
+│   │   │   ├── media-storage.interface.ts        # IMediaStorageService { prepareUserDir() }
+│   │   │   └── vision-service.interface.ts       # MediaInput y MediaKind
+│   │   └── services/
+│   │       ├── local-media-storage.service.ts    # Carpetas por usuario en disco
+│   │       └── media-context-builder.service.ts  # Prompt visual + entrada de historial
 │   └── voice/
 │       ├── factories/
 │       │   ├── audio-storage.factory.ts          # Crea IAudioStorageService
@@ -89,6 +106,8 @@ storage/                    # (generado en runtime, ignorado por git)
 ├── audios/
 │   └── <PushName>_<numero>/   # Una carpeta por remitente
 │       └── file-<timestamp>.ogg
+├── media/
+│   └── <PushName>_<numero>/   # Imagenes y stickers recibidos
 └── models/                 # Modelos Whisper descargados (modo local)
 
 scripts/
@@ -189,6 +208,40 @@ El texto transcrito entra al mismo pipeline de ConversationService
     (identico al flujo de texto desde ese punto)
 ```
 
+### 4. Flujo de Media (`src/flows/media.flow.ts`)
+
+```
+Usuario envia imagen o sticker
+    |
+EVENTS.MEDIA se dispara
+    |
+Detecta ctx.message.imageMessage o ctx.message.stickerMessage
+    |
+Si VISION_ENABLED=false:
+    → responde que no puede interpretar imagenes por ahora
+    |
+LocalMediaStorageService.prepareUserDir(ctx.from, username)
+    → crea storage/media/<PushName>_<numero>/ si no existe
+    |
+provider.saveFile(ctx, { path: userDir })
+    → descarga y guarda el archivo en la carpeta del usuario
+    |
+Lee el archivo como Buffer y arma MediaInput
+    → { kind, mimeType, base64, filePath }
+    |
+ConversationService.generateMediaReply(...)
+    |-- agrega un prompt visual transitorio para el LLM
+    |-- LLMService.generateVisionResponse({ messages, media })
+    |-- guarda en historial solo texto:
+    |       [Imagen enviada por el usuario: descripcion/respuesta generada]
+    |-- agrega la respuesta del asistente
+    |-- resume si history.length > maxMessages
+    |
+Respuesta se envia en chunks con flowDynamic
+```
+
+Los stickers se envian como `image/webp` cuando WhatsApp no provee otro MIME type. Si el proveedor o modelo rechaza el formato, el adapter devuelve una respuesta controlada: `no pude interpretar ese sticker, puedes mandarlo como imagen?`.
+
 Pipeline de transcripcion local:
 ```
 OGG/Opus (WhatsApp, 48kHz)
@@ -222,6 +275,7 @@ Los flows son la capa delgada de BuilderBot. Solo leen el estado del usuario, de
 
 **`welcome.flow.ts`**: responde a `EVENTS.WELCOME` (cualquier mensaje de texto).
 **`voice-note.flow.ts`**: responde a `EVENTS.VOICE_NOTE` (nota de voz).
+**`media.flow.ts`**: responde a `EVENTS.MEDIA` (imagenes y stickers).
 
 Ambos comparten el mismo patron de estado:
 ```typescript
@@ -294,6 +348,11 @@ Divide la respuesta del LLM en oraciones individuales (split por `.` sin lookbeh
 ```typescript
 interface ILLMService {
     generateResponse(input: { username: string; messages: ChatMessage[] }): Promise<string>;
+    generateVisionResponse(input: {
+        username: string;
+        messages: ChatMessage[];
+        media: MediaInput;
+    }): Promise<string>;
 }
 ```
 
@@ -304,6 +363,49 @@ Selecciona el servicio segun `LLM_MODE` y `LLM_PROVIDER` en `appConfig`. No requ
 - **`ollama-llm.service.ts`**: usa `client.chat({ model, messages })` del SDK `ollama`.
 - **`openai-llm.service.ts`**: usa `client.chat.completions.create({ model, messages })` del SDK `openai`.
 - **`groq-llm.service.ts`**: usa `client.chat.completions.create({ model, messages })` del SDK `groq-sdk`.
+
+Para vision:
+- Ollama agrega `images: [base64]` al ultimo mensaje `user`.
+- OpenAI y Groq convierten el ultimo mensaje `user` a contenido multimodal con `text` + `image_url` usando un data URL.
+- Si `VISION_USE_TEXT_MODEL=true`, cada adapter usa el modelo de texto activo.
+- Si `VISION_USE_TEXT_MODEL=false`, cada adapter usa su variable de vision (`OLLAMA_VISION_MODEL`, `OPENAI_VISION_MODEL`, `GROQ_VISION_MODEL`).
+
+---
+
+### `src/features/media/` — Feature de Media
+
+#### Interfaces
+```typescript
+interface IMediaStorageService {
+    prepareUserDir(userId: string, username: string): Promise<string>;
+}
+
+type MediaKind = 'image' | 'sticker';
+interface MediaInput {
+    mimeType: string;
+    base64: string;
+    filePath: string;
+    kind: MediaKind;
+}
+```
+
+#### Almacenamiento de Media
+
+- Carpeta base: `storage/media/` (ignorada por git)
+- Una subcarpeta por remitente: `<pushName>_<numero>` (sanitizado a `[a-zA-Z0-9_-]`)
+- El historial no guarda `base64`, data URLs ni rutas locales; solo texto generado por el modelo.
+
+#### Configuracion de Vision
+
+| Caso | Variables principales |
+|---|---|
+| Ollama local con modelo vision separado | `LLM_MODE=local`, `VISION_ENABLED=true`, `VISION_USE_TEXT_MODEL=false`, `OLLAMA_VISION_MODEL=llava:latest` |
+| OpenAI cloud usando el mismo modelo de texto | `LLM_MODE=cloud`, `LLM_PROVIDER=openai`, `OPENAI_MODEL=gpt-4o-mini`, `VISION_ENABLED=true`, `VISION_USE_TEXT_MODEL=true` |
+| Groq cloud con modelo vision separado | `LLM_MODE=cloud`, `LLM_PROVIDER=groq`, `VISION_ENABLED=true`, `VISION_USE_TEXT_MODEL=false`, `GROQ_VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct` |
+
+Reglas fail-fast:
+- `VISION_ENABLED=true` con `VISION_MODEL_MULTIMODAL=false` falla al iniciar.
+- Si `VISION_USE_TEXT_MODEL=false`, se exige el modelo de vision del proveedor activo.
 
 ---
 

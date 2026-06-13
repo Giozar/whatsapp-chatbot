@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This is a TypeScript BuilderBot WhatsApp chatbot. Runtime code lives in `src/`, with `src/app.ts` as the entry point. Conversation handlers stay in `src/flows/`, while feature code is organized under `src/features/chat`, `src/features/llm`, and `src/features/voice`. Shared environment loading and validation lives in `src/shared/config`. Supporting docs are in `docs/`, manual utilities are in `scripts/`, generated output is in `dist/`, and local audio/model artifacts may appear under `storage/`.
+This is a TypeScript BuilderBot WhatsApp chatbot. Runtime code lives in `src/`, with `src/app.ts` as the entry point. Conversation handlers stay in `src/flows/`, while feature code is organized under `src/features/chat`, `src/features/llm`, `src/features/media`, and `src/features/voice`. Shared environment loading and validation lives in `src/shared/config`. Supporting docs are in `docs/`, manual utilities are in `scripts/`, generated output is in `dist/`, and local audio/media/model artifacts may appear under `storage/`.
 
 ## Build, Test, and Development Commands
 
@@ -30,4 +30,4 @@ Recent history mostly follows Conventional Commits, for example `feat: implement
 
 ## Security & Configuration Tips
 
-Do not commit `.env`, API keys, downloaded models, session data, or generated logs. Keep `example.env` updated when adding required configuration. New configuration should stay grouped by `LLM_MODE` and `VOICE_MODE`, with cloud credentials and local model settings documented separately.
+Do not commit `.env`, API keys, downloaded models, session data, media saved in `storage/media`, or generated logs. Keep `example.env` updated when adding required configuration. New configuration should stay grouped by `LLM_MODE`, `VOICE_MODE`, and vision/media settings, with cloud credentials and local model settings documented separately.

@@ -6,14 +6,17 @@ export class MessageBuilder {
     constructor(private readonly promptBuilder = new PromptBuilder()) {}
 
     buildMessages(history: ChatMessage[], summary?: string): ChatMessage[] {
-        const summaryMessage: ChatMessage | null = summary
-            ? { role: 'system', content: `Resumen de la conversación previa:\n${summary}` }
-            : null;
-
         if (appConfig.llm.usesModelfile) {
+            const summaryMessage: ChatMessage | null = summary
+                ? { role: 'user', content: `Resumen de la conversación previa:\n${summary}` }
+                : null;
+
             return summaryMessage ? [summaryMessage, ...history] : history;
         }
 
+        const summaryMessage: ChatMessage | null = summary
+            ? { role: 'system', content: `Resumen de la conversación previa:\n${summary}` }
+            : null;
         const messages: ChatMessage[] = [
             { role: 'system', content: this.promptBuilder.buildSystemPrompt() },
         ];
@@ -24,4 +27,3 @@ export class MessageBuilder {
         return messages;
     }
 }
-
