@@ -13,52 +13,52 @@ export class MessageBuilder {
 
     buildMessages({ history, username, summary }: BuildMessagesInput): ChatMessage[] {
         const normalizedUsername = this.normalizeUsername(username);
-        const summaryMessage = summary
-            ? this.buildSummaryContext(summary, appConfig.llm.usesModelfile)
-            : null;
 
         if (appConfig.llm.usesModelfile) {
-            const contextualMessages: ChatMessage[] = [
-                this.buildUserNameContext(normalizedUsername),
-            ];
-
-            if (summaryMessage) contextualMessages.push(summaryMessage);
-            contextualMessages.push(...history);
-
-            return contextualMessages;
+            return this.foldContextIntoLastUserMessage(history, normalizedUsername, summary);
         }
 
         const messages: ChatMessage[] = [
             { role: 'system', content: this.promptBuilder.buildSystemPrompt(normalizedUsername) },
         ];
 
-        if (summaryMessage) messages.push(summaryMessage);
+        if (summary) {
+            messages.push({
+                role: 'system',
+                content: `Resumen de la conversación previa:\n${summary}`,
+            });
+        }
+
         messages.push(...history);
 
         return messages;
     }
 
-    private buildSummaryContext(summary: string, usesModelfile: boolean): ChatMessage {
-        if (usesModelfile) {
-            return {
-                role: 'user',
-                content: `Contexto de la conversacion previa:\n${summary}`,
-            };
+    private foldContextIntoLastUserMessage(
+        history: ChatMessage[],
+        username: string,
+        summary?: string
+    ): ChatMessage[] {
+        const lastUserIndex = history.reduce(
+            (found, msg, i) => (msg.role === 'user' ? i : found),
+            -1
+        );
+
+        const preamble = this.buildModelfilePreamble(username, summary);
+
+        if (lastUserIndex === -1) {
+            return [{ role: 'user', content: preamble }, ...history];
         }
 
-        return {
-            role: 'system',
-            content: `Resumen de la conversación previa:\n${summary}`,
-        };
+        return history.map((msg, i) => {
+            if (i !== lastUserIndex) return msg;
+            return { ...msg, content: `${preamble}${msg.content}` };
+        });
     }
 
-    private buildUserNameContext(username: string): ChatMessage {
-        return {
-            role: 'user',
-            content:
-                `Contexto: el usuario con quien hablas se llama ${username}. ` +
-                'Usa este dato solo si se siente natural en la conversacion.',
-        };
+    private buildModelfilePreamble(username: string, summary?: string): string {
+        const summaryLine = summary ? `Resumen previo: ${summary}\n` : '';
+        return `Contexto: hablas con ${username}.\n${summaryLine}Usa estos datos solo si se siente natural.\n\n`;
     }
 
     private normalizeUsername(username?: string): string {

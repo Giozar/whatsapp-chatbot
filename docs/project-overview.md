@@ -397,15 +397,21 @@ interface MediaInput {
 
 #### Configuracion de Vision
 
+La config de vision es jerárquica: si `VISION_ENABLED=false` no se lee ninguna otra variable. Si `VISION_MODEL_MULTIMODAL=true` se usa el LLM de texto activo sin variables adicionales. Solo si `VISION_MODEL_MULTIMODAL=false` hace falta configurar el modo y modelo de vision separado — que puede ser un proveedor **distinto** al del LLM de texto.
+
 | Caso | Variables principales |
 |---|---|
-| Ollama local con modelo vision separado | `LLM_MODE=local`, `VISION_ENABLED=true`, `VISION_USE_TEXT_MODEL=false`, `OLLAMA_VISION_MODEL=llava:latest` |
-| OpenAI cloud usando el mismo modelo de texto | `LLM_MODE=cloud`, `LLM_PROVIDER=openai`, `OPENAI_MODEL=gpt-4o-mini`, `VISION_ENABLED=true`, `VISION_USE_TEXT_MODEL=true` |
-| Groq cloud con modelo vision separado | `LLM_MODE=cloud`, `LLM_PROVIDER=groq`, `VISION_ENABLED=true`, `VISION_USE_TEXT_MODEL=false`, `GROQ_VISION_MODEL=meta-llama/llama-4-scout-17b-16e-instruct` |
+| Ollama local, mismo modelo multimodal | `VISION_ENABLED=true`, `VISION_MODEL_MULTIMODAL=true`, `OLLAMA_MODEL=llava:latest` |
+| Ollama local, modelo de vision separado | `VISION_ENABLED=true`, `VISION_MODEL_MULTIMODAL=false`, `VISION_MODE=local`, `VISION_LOCAL_MODEL=llava:latest` |
+| Texto local (Ollama) + vision cloud (Groq) | `LLM_MODE=local`, `VISION_ENABLED=true`, `VISION_MODEL_MULTIMODAL=false`, `VISION_MODE=cloud`, `VISION_CLOUD_PROVIDER=groq`, `VISION_CLOUD_MODEL=...`, `VISION_CLOUD_API_KEY=...` |
+| Cloud OpenAI, mismo modelo de texto | `LLM_MODE=cloud`, `LLM_PROVIDER=openai`, `OPENAI_MODEL=gpt-4o-mini`, `VISION_ENABLED=true`, `VISION_MODEL_MULTIMODAL=true` |
+| Cloud Groq, modelo de vision separado | `VISION_ENABLED=true`, `VISION_MODEL_MULTIMODAL=false`, `VISION_MODE=cloud`, `VISION_CLOUD_PROVIDER=groq`, `VISION_CLOUD_MODEL=meta-llama/llama-4-scout-17b-16e-instruct`, `VISION_CLOUD_API_KEY=...` |
 
 Reglas fail-fast:
-- `VISION_ENABLED=true` con `VISION_MODEL_MULTIMODAL=false` falla al iniciar.
-- Si `VISION_USE_TEXT_MODEL=false`, se exige el modelo de vision del proveedor activo.
+- `VISION_ENABLED=false` ignora todas las demás variables de vision.
+- `VISION_MODEL_MULTIMODAL=true` no requiere variables adicionales (usa el LLM de texto activo).
+- `VISION_MODEL_MULTIMODAL=false` + `VISION_MODE=local` exige `VISION_LOCAL_MODEL`.
+- `VISION_MODEL_MULTIMODAL=false` + `VISION_MODE=cloud` exige `VISION_CLOUD_PROVIDER`, `VISION_CLOUD_MODEL` y `VISION_CLOUD_API_KEY`.
 
 ---
 
@@ -488,7 +494,6 @@ USES_MODELFILE=false
 ```
 
 - `OLLAMA_MODEL` es la variable recomendada.
-- `AI_MODEL` se mantiene como alias legacy por compatibilidad.
 - `USES_MODELFILE=true` evita agregar el system prompt porque se asume que el modelo ya trae instrucciones.
 - Cuando `USES_MODELFILE=false`, el nombre del usuario se agrega al system prompt.
 - Cuando `USES_MODELFILE=true`, el nombre del usuario y el resumen viajan como contexto transitorio de tipo `user` para no interferir con el Modelfile.
@@ -529,6 +534,33 @@ GROQ_API_KEY=...
 GROQ_TRANSCRIPTION_MODEL=whisper-large-v3-turbo
 ```
 
+### Vision (modelo multimodal activo)
+
+```env
+VISION_ENABLED=true
+VISION_MODEL_MULTIMODAL=true
+```
+
+### Vision (modelo local separado)
+
+```env
+VISION_ENABLED=true
+VISION_MODEL_MULTIMODAL=false
+VISION_MODE=local
+VISION_LOCAL_MODEL=llava:latest
+```
+
+### Vision (modelo cloud separado, desacoplado del LLM de texto)
+
+```env
+VISION_ENABLED=true
+VISION_MODEL_MULTIMODAL=false
+VISION_MODE=cloud
+VISION_CLOUD_PROVIDER=groq    # openai | groq
+VISION_CLOUD_MODEL=meta-llama/llama-4-scout-17b-16e-instruct
+VISION_CLOUD_API_KEY=gsk_...
+```
+
 ### Storage
 
 ```env
@@ -547,6 +579,9 @@ AUDIO_STORAGE_DIR=storage/audios
 - `VOICE_MODE=cloud` exige `GROQ_API_KEY` y `GROQ_TRANSCRIPTION_MODEL`.
 - `REPLY_MIN_DELAY_MS` debe ser menor o igual a `REPLY_MAX_DELAY_MS`.
 - `HISTORY_KEEP_RECENT` debe ser menor que `HISTORY_MAX_MESSAGES`.
+- `VISION_ENABLED=false` omite toda validacion de vision.
+- `VISION_MODEL_MULTIMODAL=false` + `VISION_MODE=local` exige `VISION_LOCAL_MODEL`.
+- `VISION_MODEL_MULTIMODAL=false` + `VISION_MODE=cloud` exige `VISION_CLOUD_PROVIDER`, `VISION_CLOUD_MODEL` y `VISION_CLOUD_API_KEY`.
 - Si alguna condicion no se cumple, el bot falla al iniciar con un mensaje de error claro.
 
 ---

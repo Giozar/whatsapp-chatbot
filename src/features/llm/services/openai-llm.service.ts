@@ -7,15 +7,24 @@ import type {
 } from '~/features/llm/interfaces/llm-service.interface';
 import { appConfig } from '~/shared/config/app-config';
 
+interface OpenAIConfig {
+    model?: string;
+    apiKey?: string;
+}
+
 export class OpenAILLMService implements ILLMService {
-    private readonly client = new OpenAI({
-        apiKey: appConfig.llm.cloud.openai.apiKey,
-    });
+    private readonly client: OpenAI;
+    private readonly model: string;
+
+    constructor(config: OpenAIConfig = {}) {
+        this.client = new OpenAI({ apiKey: config.apiKey ?? appConfig.llm.cloud.openai.apiKey });
+        this.model = config.model ?? appConfig.llm.cloud.openai.model!;
+    }
 
     async generateResponse({ messages }: GenerateResponseInput): Promise<string> {
         try {
             const completion = await this.client.chat.completions.create({
-                model: appConfig.llm.cloud.openai.model!,
+                model: this.model,
                 messages,
             });
 
@@ -32,7 +41,7 @@ export class OpenAILLMService implements ILLMService {
     }: GenerateVisionResponseInput): Promise<string> {
         try {
             const completion = await this.client.chat.completions.create({
-                model: this.getVisionModel(),
+                model: this.model,
                 messages: this.buildVisionMessages(messages, media),
             });
 
@@ -41,14 +50,6 @@ export class OpenAILLMService implements ILLMService {
             console.error('[OpenAILLMService] Error generating vision response:', error);
             return this.getVisionFallback(media.kind);
         }
-    }
-
-    private getVisionModel(): string {
-        if (appConfig.vision.useTextModel) {
-            return appConfig.llm.cloud.openai.model!;
-        }
-
-        return appConfig.vision.cloud.openai.model!;
     }
 
     private buildVisionMessages(

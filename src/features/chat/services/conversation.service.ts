@@ -30,6 +30,7 @@ export interface ConversationMediaReplyInput {
 export class ConversationService {
     constructor(
         private readonly llmService: ILLMService,
+        private readonly visionService: ILLMService | null = null,
         private readonly messageBuilder = new MessageBuilder(),
         private readonly summarizer = new HistorySummarizer(llmService),
         private readonly mediaContextBuilder = new MediaContextBuilder()
@@ -97,7 +98,7 @@ export class ConversationService {
             username,
             summary,
         });
-        const response = await this.llmService.generateVisionResponse({
+        const response = await (this.visionService ?? this.llmService).generateVisionResponse({
             username,
             messages,
             media,

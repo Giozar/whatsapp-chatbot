@@ -7,13 +7,25 @@ import type {
 } from '~/features/llm/interfaces/llm-service.interface';
 import { appConfig } from '~/shared/config/app-config';
 
+interface OllamaConfig {
+    model?: string;
+    host?: string;
+}
+
 export class OllamaLLMService implements ILLMService {
-    private readonly client = new Ollama({ host: appConfig.llm.local.host });
+    private readonly client: Ollama;
+    private readonly model: string;
+
+    constructor(config: OllamaConfig = {}) {
+        const host = config.host ?? appConfig.llm.local.host;
+        this.model = config.model ?? appConfig.llm.local.model;
+        this.client = new Ollama({ host });
+    }
 
     async generateResponse({ messages }: GenerateResponseInput): Promise<string> {
         try {
             const completion = await this.client.chat({
-                model: appConfig.llm.local.model,
+                model: this.model,
                 messages,
             });
 
@@ -36,7 +48,7 @@ export class OllamaLLMService implements ILLMService {
             }));
 
             const completion = await this.client.chat({
-                model: this.getVisionModel(),
+                model: this.model,
                 messages: visionMessages,
             });
 
@@ -45,14 +57,6 @@ export class OllamaLLMService implements ILLMService {
             console.error('[OllamaLLMService] Error generating vision response:', error);
             return this.getVisionFallback(media.kind);
         }
-    }
-
-    private getVisionModel(): string {
-        if (appConfig.vision.useTextModel) {
-            return appConfig.llm.local.model;
-        }
-
-        return appConfig.vision.local.model!;
     }
 
     private getVisionFallback(kind: GenerateVisionResponseInput['media']['kind']): string {

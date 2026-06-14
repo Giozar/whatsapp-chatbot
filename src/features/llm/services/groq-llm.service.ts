@@ -7,15 +7,24 @@ import type {
 } from '~/features/llm/interfaces/llm-service.interface';
 import { appConfig } from '~/shared/config/app-config';
 
+interface GroqConfig {
+    model?: string;
+    apiKey?: string;
+}
+
 export class GroqLLMService implements ILLMService {
-    private readonly client = new Groq({
-        apiKey: appConfig.llm.cloud.groq.apiKey,
-    });
+    private readonly client: Groq;
+    private readonly model: string;
+
+    constructor(config: GroqConfig = {}) {
+        this.client = new Groq({ apiKey: config.apiKey ?? appConfig.llm.cloud.groq.apiKey });
+        this.model = config.model ?? appConfig.llm.cloud.groq.model!;
+    }
 
     async generateResponse({ messages }: GenerateResponseInput): Promise<string> {
         try {
             const completion = await this.client.chat.completions.create({
-                model: appConfig.llm.cloud.groq.model!,
+                model: this.model,
                 messages,
             });
 
@@ -32,7 +41,7 @@ export class GroqLLMService implements ILLMService {
     }: GenerateVisionResponseInput): Promise<string> {
         try {
             const completion = await this.client.chat.completions.create({
-                model: this.getVisionModel(),
+                model: this.model,
                 messages: this.buildVisionMessages(messages, media),
             });
 
@@ -41,14 +50,6 @@ export class GroqLLMService implements ILLMService {
             console.error('[GroqLLMService] Error generating vision response:', error);
             return this.getVisionFallback(media.kind);
         }
-    }
-
-    private getVisionModel(): string {
-        if (appConfig.vision.useTextModel) {
-            return appConfig.llm.cloud.groq.model!;
-        }
-
-        return appConfig.vision.cloud.groq.model!;
     }
 
     private buildVisionMessages(

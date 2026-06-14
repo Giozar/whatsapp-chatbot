@@ -88,7 +88,7 @@ if (
     throw new Error('[config] TRANSCRIPTION_PROVIDER must be "local" when VOICE_MODE=local');
 }
 
-const ollamaModel = readEnv('OLLAMA_MODEL') ?? readEnv('AI_MODEL') ?? 'llama3.2:latest';
+const ollamaModel = readEnv('OLLAMA_MODEL') ?? 'llama3.2:latest';
 const ollamaHost = readEnv('OLLAMA_HOST') ?? 'http://localhost:11434';
 const openaiModel = readEnv('OPENAI_MODEL');
 const openaiApiKey = readEnv('OPENAI_API_KEY');
@@ -96,19 +96,6 @@ const groqModel = readEnv('GROQ_MODEL');
 const groqApiKey = readEnv('GROQ_API_KEY');
 const groqTranscriptionModel =
     readEnv('GROQ_TRANSCRIPTION_MODEL') ?? 'whisper-large-v3-turbo';
-const visionEnabled = parseBoolean('VISION_ENABLED', false);
-const visionModelMultimodal = parseBoolean('VISION_MODEL_MULTIMODAL', true);
-const visionUseTextModel = parseBoolean('VISION_USE_TEXT_MODEL', true);
-const ollamaVisionModel = readEnv('OLLAMA_VISION_MODEL');
-const openaiVisionModel = readEnv('OPENAI_VISION_MODEL');
-const groqVisionModel = readEnv('GROQ_VISION_MODEL');
-
-if (visionEnabled && !visionModelMultimodal) {
-    throw new Error(
-        '[config] VISION_MODEL_MULTIMODAL must be "true" when VISION_ENABLED=true'
-    );
-}
-
 if (llmMode === 'cloud' && llmProvider === 'openai') {
     requireEnv('OPENAI_API_KEY', 'required when LLM_MODE=cloud and LLM_PROVIDER=openai');
     requireEnv('OPENAI_MODEL', 'required when LLM_MODE=cloud and LLM_PROVIDER=openai');
@@ -124,28 +111,53 @@ if (voiceMode === 'cloud') {
     requireEnv('GROQ_TRANSCRIPTION_MODEL', 'required when VOICE_MODE=cloud');
 }
 
-if (visionEnabled && !visionUseTextModel) {
-    if (llmMode === 'local') {
-        requireEnv(
-            'OLLAMA_VISION_MODEL',
-            'required when VISION_ENABLED=true, LLM_MODE=local and VISION_USE_TEXT_MODEL=false'
-        );
+const buildVisionConfig = () => {
+    const enabled = parseBoolean('VISION_ENABLED', false);
+    if (!enabled) {
+        return { enabled: false as const, useActiveModel: false as const, mode: null, local: null, cloud: null };
     }
 
-    if (llmMode === 'cloud' && llmProvider === 'openai') {
-        requireEnv(
-            'OPENAI_VISION_MODEL',
-            'required when VISION_ENABLED=true, LLM_MODE=cloud, LLM_PROVIDER=openai and VISION_USE_TEXT_MODEL=false'
-        );
+    const useActiveModel = parseBoolean('VISION_MODEL_MULTIMODAL', true);
+    if (useActiveModel) {
+        return { enabled: true as const, useActiveModel: true as const, mode: null, local: null, cloud: null };
     }
 
-    if (llmMode === 'cloud' && llmProvider === 'groq') {
-        requireEnv(
-            'GROQ_VISION_MODEL',
-            'required when VISION_ENABLED=true, LLM_MODE=cloud, LLM_PROVIDER=groq and VISION_USE_TEXT_MODEL=false'
+    const visionMode = parseValue('VISION_MODE', ['local', 'cloud'] as const, 'local' as const);
+
+    if (visionMode === 'local') {
+        const model = requireEnv(
+            'VISION_LOCAL_MODEL',
+            'required when VISION_ENABLED=true, VISION_MODEL_MULTIMODAL=false and VISION_MODE=local'
         );
+        return {
+            enabled: true as const,
+            useActiveModel: false as const,
+            mode: 'local' as const,
+            local: { host: ollamaHost, model },
+            cloud: null,
+        };
     }
-}
+
+    const cloudProvider = parseValue('VISION_CLOUD_PROVIDER', ['openai', 'groq'] as const, 'openai' as const);
+    const cloudModel = requireEnv(
+        'VISION_CLOUD_MODEL',
+        'required when VISION_ENABLED=true, VISION_MODEL_MULTIMODAL=false and VISION_MODE=cloud'
+    );
+    const cloudApiKey = requireEnv(
+        'VISION_CLOUD_API_KEY',
+        'required when VISION_ENABLED=true, VISION_MODEL_MULTIMODAL=false and VISION_MODE=cloud'
+    );
+
+    return {
+        enabled: true as const,
+        useActiveModel: false as const,
+        mode: 'cloud' as const,
+        local: null,
+        cloud: { provider: cloudProvider, model: cloudModel, apiKey: cloudApiKey },
+    };
+};
+
+const visionConfig = buildVisionConfig();
 
 export const appConfig = {
     server: {
@@ -167,7 +179,6 @@ export const appConfig = {
             provider: 'ollama' as const,
             host: ollamaHost,
             model: ollamaModel,
-            legacyModelEnv: readEnv('AI_MODEL'),
         },
         cloud: {
             provider: llmProvider === 'ollama' ? null : llmProvider,
@@ -199,22 +210,7 @@ export const appConfig = {
         },
     },
     vision: {
-        enabled: visionEnabled,
-        modelMultimodal: visionModelMultimodal,
-        useTextModel: visionUseTextModel,
-        local: {
-            provider: 'ollama' as const,
-            model: ollamaVisionModel,
-        },
-        cloud: {
-            provider: llmProvider === 'ollama' ? null : llmProvider,
-            openai: {
-                model: openaiVisionModel,
-            },
-            groq: {
-                model: groqVisionModel,
-            },
-        },
+        ...visionConfig,
         storage: {
             mediaDir: toAbsolutePath(readEnv('MEDIA_STORAGE_DIR') ?? 'storage/media'),
         },
