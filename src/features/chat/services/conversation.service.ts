@@ -46,7 +46,11 @@ export class ConversationService {
             { role: 'user', content: incomingText },
         ];
 
-        const messages = this.messageBuilder.buildMessages(historyWithUser, summary);
+        const messages = this.messageBuilder.buildMessages({
+            history: historyWithUser,
+            username,
+            summary,
+        });
         const response = await this.llmService.generateResponse({ username, messages });
 
         const fullHistory: ChatMessage[] = [
@@ -88,10 +92,11 @@ export class ConversationService {
         summary,
     }: ConversationMediaReplyInput): Promise<ConversationReplyResult> {
         const mediaPrompt = this.mediaContextBuilder.buildVisionPrompt(media.kind);
-        const messages = this.messageBuilder.buildMessages(
-            [...history, { role: 'user', content: mediaPrompt }],
-            summary
-        );
+        const messages = this.messageBuilder.buildMessages({
+            history: [...history, { role: 'user', content: mediaPrompt }],
+            username,
+            summary,
+        });
         const response = await this.llmService.generateVisionResponse({
             username,
             messages,

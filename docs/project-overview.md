@@ -487,8 +487,11 @@ OLLAMA_MODEL=llama3.2:latest
 USES_MODELFILE=false
 ```
 
-- `OLLAMA_MODEL` es la variable recomendada. `AI_MODEL` se mantiene como alias legacy.
-- `USES_MODELFILE=true` omite el system prompt de persona (el modelo ya lo tiene integrado via Modelfile).
+- `OLLAMA_MODEL` es la variable recomendada.
+- `AI_MODEL` se mantiene como alias legacy por compatibilidad.
+- `USES_MODELFILE=true` evita agregar el system prompt porque se asume que el modelo ya trae instrucciones.
+- Cuando `USES_MODELFILE=false`, el nombre del usuario se agrega al system prompt.
+- Cuando `USES_MODELFILE=true`, el nombre del usuario y el resumen viajan como contexto transitorio de tipo `user` para no interferir con el Modelfile.
 
 ### LLM Cloud — OpenAI
 

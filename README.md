@@ -26,6 +26,8 @@ Para `VOICE_MODE=local` se usa Whisper local y basta con `WHISPER_MODEL`; el mod
 
 Para imagenes y stickers, activa `VISION_ENABLED=true`. `VISION_MODEL_MULTIMODAL=true` declara que el modelo elegido soporta vision; si esta en `false`, el bot falla al iniciar para evitar una configuracion invalida. Con `VISION_USE_TEXT_MODEL=true`, la vision reutiliza el modelo de texto activo (`OLLAMA_MODEL`, `OPENAI_MODEL` o `GROQ_MODEL`). Con `VISION_USE_TEXT_MODEL=false`, usa el modelo de vision del proveedor activo: `OLLAMA_VISION_MODEL`, `OPENAI_VISION_MODEL` o `GROQ_VISION_MODEL`. Los archivos se guardan en `MEDIA_STORAGE_DIR`, pero el historial solo conserva texto descriptivo.
 
+El bot toma el nombre del usuario desde `ctx.pushName`. Si `USES_MODELFILE=false`, ese nombre entra al `system prompt`. Si `USES_MODELFILE=true`, el nombre viaja como contexto transitorio de usuario para no reemplazar el prompt del Modelfile.
+
 Revisa [example.env](example.env) para la plantilla completa.
 
 ## Desarrollo

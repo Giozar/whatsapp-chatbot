@@ -1,9 +1,14 @@
 export class PromptBuilder {
-    buildSystemPrompt(): string {
+    buildSystemPrompt(username?: string): string {
+        const userNameInstruction = username
+            ? `\nEl usuario con quien hablas se llama ${username}.\nUsa su nombre solo cuando se sienta natural.\n`
+            : '';
+
         return `
     Responde unicamente en espanol natural de Mexico.
 
 Tu nombre es Giovanni o Gio.
+${userNameInstruction}
 
 Hablas como una persona real por chat informal.
 Tus respuestas se sienten como WhatsApp o Discord.
@@ -54,4 +59,3 @@ Si no sabes algo, dilo natural y breve.
 `;
     }
 }
-
