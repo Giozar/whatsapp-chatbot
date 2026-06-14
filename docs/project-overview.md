@@ -9,7 +9,8 @@
 - Interpretar imagenes y stickers con modelos multimodales locales o cloud
 - Guardar los audios recibidos organizados en una carpeta por usuario
 - Guardar imagenes/stickers recibidos organizados en una carpeta por usuario
-- Mantener historial de conversacion por usuario (aislado en memoria)
+- Mantener historial de conversacion por usuario, persistido en disco para sobrevivir reinicios
+- Restaurar los ultimos N mensajes al retomar una conversacion (N configurable)
 - Resumir automaticamente el historial cuando crece demasiado
 - Imprimir el historial completo de cada usuario en consola para observabilidad
 - Generar respuestas usando modelos AI intercambiables (Ollama, OpenAI, Groq)
@@ -24,6 +25,7 @@ WhatsApp API (Baileys)
     |
 BuilderBot Framework
     |-- Welcome Flow (texto)
+    |       |-- ConversationStateManager (carga/persiste → storage/conversations/<usuario>.json)
     |       |-- ConversationService
     |               |-- MessageBuilder (system prompt + historial)
     |               |-- LLMService (Ollama | OpenAI | Groq)
@@ -59,13 +61,20 @@ src/
 │   │   │   ├── message.builder.ts                # Arma el array de mensajes para el LLM
 │   │   │   └── prompt.builder.ts                 # System prompt de personalidad
 │   │   ├── factories/
-│   │   │   └── conversation.factory.ts           # Crea ConversationService con dependencias
+│   │   │   ├── conversation.factory.ts           # Crea ConversationService con dependencias
+│   │   │   ├── conversation-store.factory.ts     # Selecciona backend de persistencia
+│   │   │   └── conversation-state-manager.factory.ts # Crea ConversationStateManager
+│   │   ├── interfaces/
+│   │   │   └── conversation-store.interface.ts   # IConversationStore { load(), save() }
 │   │   ├── services/
 │   │   │   ├── conversation.service.ts           # Orquesta respuesta + resumen
+│   │   │   ├── conversation-state.manager.ts     # Carga/persiste historial + estado continuidad
+│   │   │   ├── file-conversation-store.service.ts # Persiste JSON por usuario en disco
 │   │   │   └── history-summarizer.service.ts     # Resume historial usando el LLM
 │   │   ├── types/
 │   │   │   ├── chat-message.ts                   # ChatMessage { role, content }
-│   │   │   └── conversation-state.ts             # ConversationState { history, summary? }
+│   │   │   ├── conversation-state.ts             # ConversationState { history, summary? }
+│   │   │   └── stored-conversation.ts            # StoredConversation persistida + ConversationStatus
 │   │   └── utils/
 │   │       ├── print-history.ts                  # Imprime historial formateado en consola
 │   │       └── split-response.ts                 # Divide respuesta en chunks por oracion
@@ -109,6 +118,8 @@ storage/                    # (generado en runtime, ignorado por git)
 │       └── file-<timestamp>.ogg
 ├── media/
 │   └── <PushName>_<numero>/   # Imagenes y stickers recibidos
+├── conversations/          # Historial persistido por usuario
+│   └── <userId>.json          # { history, summary, timestamps, messageCount }
 └── models/                 # Modelos Whisper descargados (modo local)
 
 scripts/
@@ -165,7 +176,7 @@ Usuario envia mensaje de texto a WhatsApp
     |
 EVENTS.WELCOME se dispara
     |
-Lee estado del usuario: state.getMyState() → { history, summary? }
+Carga estado: stateManager.load(ctx.from) → { history (ultimos N), summary?, status, stored }
     |
 ConversationService.generateReply({ username, incomingText, history, summary })
     |-- agrega mensaje del usuario al historial
@@ -183,7 +194,7 @@ Respuesta se divide en chunks por oracion (splitResponseIntoChunks)
     |
 Se envia cada chunk con delay aleatorio via flowDynamic
     |
-state.update({ history, summary })
+stateManager.persist({ userId, username, history, summary, stored }) → storage/conversations/<userId>.json
     |
 printConversationHistory({ userId, username, history, summary, didSummarize })
 ```
@@ -281,17 +292,18 @@ También contiene un workaround sobre el provider de Baileys: su `getMimeType` i
 
 ### `src/flows/` — Capa de Orquestacion
 
-Los flows son la capa delgada de BuilderBot. Solo leen el estado del usuario, delegan al servicio de negocio y persisten el nuevo estado. No contienen logica de negocio.
+Los flows son la capa delgada de BuilderBot. Solo cargan el estado del usuario, delegan al servicio de negocio y persisten el nuevo estado. No contienen logica de negocio.
 
 **`welcome.flow.ts`**: responde a `EVENTS.WELCOME` (cualquier mensaje de texto).
 **`voice-note.flow.ts`**: responde a `EVENTS.VOICE_NOTE` (nota de voz).
 **`media.flow.ts`**: responde a `EVENTS.MEDIA` (imagenes y stickers).
 
-Ambos comparten el mismo patron de estado:
+Los tres comparten el mismo patron de estado, ahora a traves del `ConversationStateManager`
+(ya no del `state` en memoria de BuilderBot):
 ```typescript
-const { history = [], summary } = state.getMyState() ?? {}
-// ... generateReply ...
-await state.update({ history: nextHistory, summary: nextSummary })
+const { history, summary, stored } = await stateManager.load(ctx.from)
+// ... generateReply / generateMediaReply ...
+await stateManager.persist({ userId: ctx.from, username, history: nextHistory, summary: nextSummary, stored })
 ```
 
 ---
@@ -319,6 +331,30 @@ interface ConversationReplyResult {
 
 #### `history-summarizer.service.ts`
 Reutiliza el mismo LLM configurado para generar un resumen conciso de los mensajes mas antiguos, integrando el resumen previo si existe. No requiere cambios en `ILLMService`.
+
+#### Persistencia de conversacion
+
+El historial ya no vive solo en la `MemoryDB` de BuilderBot: se persiste en disco para
+sobrevivir reinicios. La capa esta desacoplada para migrar a una base de datos en el futuro.
+
+- **`interfaces/conversation-store.interface.ts`** — `IConversationStore { load(userId), save(conversation) }`.
+- **`services/file-conversation-store.service.ts`** — backend de archivo. Un JSON por usuario
+  en `storage/conversations/<userId>.json`, con cache en memoria + escritura a disco. Ante un
+  JSON corrupto loguea y lo trata como conversacion nueva (no tumba el flow).
+- **`factories/conversation-store.factory.ts`** — selecciona el backend segun `CONVERSATION_STORE`
+  (hoy `file`; futuro `memory`/`db`).
+- **`types/stored-conversation.ts`** — `StoredConversation` persistida (`version`, `history`,
+  `summary?`, `createdAt`, `lastInteractionAt`, `messageCount`) y `ConversationStatus`
+  (`'new' | 'continuing'`).
+- **`services/conversation-state.manager.ts`** (`ConversationStateManager`) — orquesta el
+  acceso al store: `load(userId)` restaura los ultimos N mensajes
+  (`CONVERSATION_RESTORE_MESSAGES`) y calcula el estado de continuidad; `persist(...)` guarda
+  preservando `createdAt`/`messageCount`. Si `CONVERSATION_PERSIST_ENABLED=false`, opera en
+  modo no-persistente (comportamiento previo en memoria).
+
+La decision de continuidad vive en `evaluateStatus()`: hoy devuelve `'continuing'` si existe
+un registro previo y `'new'` si no. Es el punto de extension documentado para futura logica de
+saludo, mensaje pendiente o umbral de inactividad (sobre `lastInteractionAt`).
 
 #### `message.builder.ts`
 Ensambla el array de mensajes para el LLM:
@@ -466,6 +502,7 @@ Validacion fail-fast al iniciar: si falta una variable requerida, el proceso fal
 
 - `server`: puerto HTTP
 - `chat.history`: parametros de resumen y logging del historial
+- `chat.persistence`: backend, directorio y ventana de restauracion del historial persistido
 - `llm`: modo, proveedor, credenciales y modelos para los tres proveedores
 - `voice`: modo, proveedor de transcripcion y directorio de audios
 - `reply`: delays minimo y maximo para enviar chunks
@@ -491,6 +528,15 @@ HISTORY_SUMMARY_ENABLED=true
 HISTORY_MAX_MESSAGES=20
 HISTORY_KEEP_RECENT=8
 HISTORY_LOG_ENABLED=true
+```
+
+### Persistencia de Conversacion
+
+```env
+CONVERSATION_PERSIST_ENABLED=true       # false: solo memoria (se pierde al reiniciar)
+CONVERSATION_STORE=file                 # file (futuro: memory | db)
+CONVERSATION_STORAGE_DIR=storage/conversations
+CONVERSATION_RESTORE_MESSAGES=10        # la N: mensajes recientes a restaurar
 ```
 
 ### LLM Local (Ollama)
@@ -589,6 +635,7 @@ AUDIO_STORAGE_DIR=storage/audios
 - `VOICE_MODE=cloud` exige `GROQ_API_KEY` y `GROQ_TRANSCRIPTION_MODEL`.
 - `REPLY_MIN_DELAY_MS` debe ser menor o igual a `REPLY_MAX_DELAY_MS`.
 - `HISTORY_KEEP_RECENT` debe ser menor que `HISTORY_MAX_MESSAGES`.
+- `CONVERSATION_RESTORE_MESSAGES` debe ser mayor que 0.
 - `VISION_ENABLED=false` omite toda validacion de vision.
 - `VISION_MODEL_MULTIMODAL=false` + `VISION_MODE=local` exige `VISION_LOCAL_MODEL`.
 - `VISION_MODEL_MULTIMODAL=false` + `VISION_MODE=cloud` exige `VISION_CLOUD_PROVIDER`, `VISION_CLOUD_MODEL` y `VISION_CLOUD_API_KEY`.
@@ -645,15 +692,15 @@ npx tsx scripts/test-whisper.ts <ruta-al-audio.ogg>   # Probar transcripcion loc
 1. Crear `src/flows/<nombre>.flow.ts` usando el patron:
    ```typescript
    export const nuevoFlow = addKeyword(EVENTS.ALGÚN_EVENTO).addAction(
-       async (ctx, { flowDynamic, state }) => {
-           const { history = [], summary } = state.getMyState() ?? {}
+       async (ctx, { flowDynamic }) => {
            const username = ctx?.pushName ?? 'Usuario'
+           const { history, summary, stored } = await stateManager.load(ctx.from)
            const { response, history: nextHistory, summary: nextSummary, didSummarize } =
                await conversationService.generateReply({ username, incomingText: ctx.body, history, summary })
            for (const chunk of splitResponseIntoChunks(response)) {
                await flowDynamic(chunk)
            }
-           await state.update({ history: nextHistory, summary: nextSummary })
+           await stateManager.persist({ userId: ctx.from, username, history: nextHistory, summary: nextSummary, stored })
            printConversationHistory({ userId: ctx.from, username, history: nextHistory, summary: nextSummary, didSummarize })
        }
    )

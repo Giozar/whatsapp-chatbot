@@ -2,6 +2,7 @@
 import { addKeyword, EVENTS } from '@builderbot/bot';
 import { readFileSync } from 'fs';
 import { createConversationService } from '~/features/chat/factories/conversation.factory';
+import { createConversationStateManager } from '~/features/chat/factories/conversation-state-manager.factory';
 import { splitResponseIntoChunks } from '~/features/chat/utils/split-response';
 import { printConversationHistory } from '~/features/chat/utils/print-history';
 import type { IAudioStorageService } from '~/features/voice/interfaces/audio-storage.interface';
@@ -13,6 +14,7 @@ import { appConfig } from '~/shared/config/app-config';
 const transcriptionService: ITranscriptionService = createTranscriptionService();
 const audioStorage: IAudioStorageService = createAudioStorageService();
 const conversationService = createConversationService();
+const stateManager = createConversationStateManager();
 const randomDelay = () =>
     Math.floor(
         Math.random() * (appConfig.reply.maxDelayMs - appConfig.reply.minDelayMs + 1)
@@ -20,7 +22,7 @@ const randomDelay = () =>
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const voiceNoteFlow = addKeyword(EVENTS.VOICE_NOTE).addAction(
-    async (ctx, { flowDynamic, state, provider }) => {
+    async (ctx, { flowDynamic, provider }) => {
         try {
             const username = ctx?.pushName ?? 'Usuario';
             console.log(`[${username}] ha enviado una nota de voz.`);
@@ -40,9 +42,7 @@ export const voiceNoteFlow = addKeyword(EVENTS.VOICE_NOTE).addAction(
                 return;
             }
 
-            const currentState = state.getMyState() ?? {};
-            const history = currentState.history ?? [];
-            const summary = currentState.summary as string | undefined;
+            const { history, summary, stored } = await stateManager.load(ctx.from);
 
             const { response, history: nextHistory, summary: nextSummary, didSummarize } =
                 await conversationService.generateReply({
@@ -58,7 +58,13 @@ export const voiceNoteFlow = addKeyword(EVENTS.VOICE_NOTE).addAction(
                 await flowDynamic(chunk);
             }
 
-            await state.update({ history: nextHistory, summary: nextSummary });
+            await stateManager.persist({
+                userId: ctx.from,
+                username,
+                history: nextHistory,
+                summary: nextSummary,
+                stored,
+            });
 
             printConversationHistory({
                 userId: ctx.from,

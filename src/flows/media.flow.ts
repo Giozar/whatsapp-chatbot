@@ -1,6 +1,7 @@
 import { addKeyword, EVENTS } from '@builderbot/bot';
 import { readFileSync } from 'fs';
 import { createConversationService } from '~/features/chat/factories/conversation.factory';
+import { createConversationStateManager } from '~/features/chat/factories/conversation-state-manager.factory';
 import { splitResponseIntoChunks } from '~/features/chat/utils/split-response';
 import { printConversationHistory } from '~/features/chat/utils/print-history';
 import type {
@@ -15,6 +16,7 @@ import { appConfig } from '~/shared/config/app-config';
 const mediaStorage: IMediaStorageService = createMediaStorageService();
 const mediaNormalizer = new MediaNormalizer();
 const conversationService = createConversationService();
+const stateManager = createConversationStateManager();
 const randomDelay = () =>
     Math.floor(
         Math.random() * (appConfig.reply.maxDelayMs - appConfig.reply.minDelayMs + 1)
@@ -22,7 +24,7 @@ const randomDelay = () =>
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const mediaFlow = addKeyword(EVENTS.MEDIA).addAction(
-    async (ctx, { flowDynamic, state, provider }) => {
+    async (ctx, { flowDynamic, provider }) => {
         try {
             const username = ctx?.pushName ?? 'Usuario';
             const mediaKind = getMediaKind(ctx);
@@ -56,9 +58,7 @@ export const mediaFlow = addKeyword(EVENTS.MEDIA).addAction(
                 base64,
             };
 
-            const currentState = state.getMyState() ?? {};
-            const history = currentState.history ?? [];
-            const summary = currentState.summary as string | undefined;
+            const { history, summary, stored } = await stateManager.load(ctx.from);
 
             const { response, history: nextHistory, summary: nextSummary, didSummarize } =
                 await conversationService.generateMediaReply({
@@ -74,7 +74,13 @@ export const mediaFlow = addKeyword(EVENTS.MEDIA).addAction(
                 await flowDynamic(chunk);
             }
 
-            await state.update({ history: nextHistory, summary: nextSummary });
+            await stateManager.persist({
+                userId: ctx.from,
+                username,
+                history: nextHistory,
+                summary: nextSummary,
+                stored,
+            });
 
             printConversationHistory({
                 userId: ctx.from,

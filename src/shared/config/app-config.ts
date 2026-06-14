@@ -170,6 +170,14 @@ export const appConfig = {
             keepRecentMessages: parseNumber('HISTORY_KEEP_RECENT', 8),
             logHistory: parseBoolean('HISTORY_LOG_ENABLED', true),
         },
+        persistence: {
+            enabled: parseBoolean('CONVERSATION_PERSIST_ENABLED', true),
+            store: parseValue('CONVERSATION_STORE', ['file'] as const, 'file' as const),
+            storageDir: toAbsolutePath(
+                readEnv('CONVERSATION_STORAGE_DIR') ?? 'storage/conversations'
+            ),
+            restoreMessages: parseNumber('CONVERSATION_RESTORE_MESSAGES', 10),
+        },
     },
     llm: {
         mode: llmMode,
@@ -227,4 +235,8 @@ if (appConfig.reply.minDelayMs > appConfig.reply.maxDelayMs) {
 
 if (appConfig.chat.history.keepRecentMessages >= appConfig.chat.history.maxMessages) {
     throw new Error('[config] HISTORY_KEEP_RECENT must be less than HISTORY_MAX_MESSAGES');
+}
+
+if (appConfig.chat.persistence.restoreMessages <= 0) {
+    throw new Error('[config] CONVERSATION_RESTORE_MESSAGES must be greater than 0');
 }
