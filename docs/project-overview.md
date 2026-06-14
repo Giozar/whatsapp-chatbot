@@ -86,7 +86,8 @@ src/
 │   │   │   └── vision-service.interface.ts       # MediaInput y MediaKind
 │   │   └── services/
 │   │       ├── local-media-storage.service.ts    # Carpetas por usuario en disco
-│   │       └── media-context-builder.service.ts  # Prompt visual + entrada de historial
+│   │       ├── media-context-builder.service.ts  # Prompt visual + entrada de historial
+│   │       └── media-normalizer.service.ts       # Normaliza media a PNG aplanado (sharp)
 │   └── voice/
 │       ├── factories/
 │       │   ├── audio-storage.factory.ts          # Crea IAudioStorageService
@@ -226,8 +227,15 @@ LocalMediaStorageService.prepareUserDir(ctx.from, username)
 provider.saveFile(ctx, { path: userDir })
     → descarga y guarda el archivo en la carpeta del usuario
     |
-Lee el archivo como Buffer y arma MediaInput
-    → { kind, mimeType, base64, filePath }
+Lee el archivo como Buffer
+    |
+MediaNormalizer.normalize(buffer)
+    → convierte toda la media (JPEG, PNG, WebP estatico/animado) a PNG aplanado sobre
+      fondo blanco (primer frame si es animado), max 1024x1024, via sharp
+    → { base64: string, mimeType: 'image/png' }
+    |
+Arma MediaInput con el PNG normalizado
+    → { kind, mimeType: 'image/png', base64, filePath }
     |
 ConversationService.generateMediaReply(...)
     |-- agrega un prompt visual transitorio para el LLM
@@ -240,7 +248,7 @@ ConversationService.generateMediaReply(...)
 Respuesta se envia en chunks con flowDynamic
 ```
 
-Los stickers se envian como `image/webp` cuando WhatsApp no provee otro MIME type. Si el proveedor o modelo rechaza el formato, el adapter devuelve una respuesta controlada: `no pude interpretar ese sticker, puedes mandarlo como imagen?`.
+Toda la media se normaliza a PNG antes de enviarla al modelo de vision. Esto resuelve la incompatibilidad de los stickers WebP (incluidos los animados, de los que se extrae el primer frame). El archivo original se guarda en disco sin modificar; solo el `base64` que viaja al modelo es el PNG normalizado.
 
 Pipeline de transcripcion local:
 ```
@@ -266,6 +274,8 @@ process.on('SIGTERM', () => shutdown('SIGTERM'))
 ```
 
 El `shutdown()` es idempotente (guard `isShuttingDown`), hace cleanup best-effort del websocket y sale con codigo 0. Si el cleanup no termina en 3 segundos, el timer de seguridad fuerza `process.exit(1)`.
+
+También contiene un workaround sobre el provider de Baileys: su `getMimeType` interno no contempla `stickerMessage`, por lo que `saveFile` lanza `'MIME type not found'` para stickers. Se parchea la instancia tras `createProvider()` para que reconozca `stickerMessage.mimetype` (y use `image/webp` como fallback), permitiendo que el sticker se descargue antes de normalizarse con `sharp`.
 
 ---
 

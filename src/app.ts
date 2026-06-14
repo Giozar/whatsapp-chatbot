@@ -9,6 +9,22 @@ const main = async () => {
         version: [2, 3000, 1035824857]
     })
 
+    // Workaround: el getMimeType del provider de Baileys no contempla stickerMessage,
+    // por lo que saveFile lanza "MIME type not found" para stickers. Lo extendemos para
+    // que reconozca el mimetype del sticker (image/webp) y permita descargarlo.
+    const providerInternals = adapterProvider as unknown as {
+        getMimeType: (ctx: any) => string | undefined
+    }
+    const originalGetMimeType = providerInternals.getMimeType.bind(adapterProvider)
+    providerInternals.getMimeType = (ctx: any) => {
+        const mimeType = originalGetMimeType(ctx)
+        if (mimeType) return mimeType
+        if (ctx?.message?.stickerMessage) {
+            return ctx.message.stickerMessage.mimetype ?? 'image/webp'
+        }
+        return undefined
+    }
+
     const adapterDB = new Database()
 
     const bot = await createBot({

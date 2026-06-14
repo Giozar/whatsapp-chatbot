@@ -1,6 +1,5 @@
 import { addKeyword, EVENTS } from '@builderbot/bot';
 import { readFileSync } from 'fs';
-import { extname } from 'path';
 import { createConversationService } from '~/features/chat/factories/conversation.factory';
 import { splitResponseIntoChunks } from '~/features/chat/utils/split-response';
 import { printConversationHistory } from '~/features/chat/utils/print-history';
@@ -10,9 +9,11 @@ import type {
 } from '~/features/media/interfaces/vision-service.interface';
 import type { IMediaStorageService } from '~/features/media/interfaces/media-storage.interface';
 import { createMediaStorageService } from '~/features/media/factories/media-storage.factory';
+import { MediaNormalizer } from '~/features/media/services/media-normalizer.service';
 import { appConfig } from '~/shared/config/app-config';
 
 const mediaStorage: IMediaStorageService = createMediaStorageService();
+const mediaNormalizer = new MediaNormalizer();
 const conversationService = createConversationService();
 const randomDelay = () =>
     Math.floor(
@@ -47,12 +48,12 @@ export const mediaFlow = addKeyword(EVENTS.MEDIA).addAction(
             console.log(`[${username}] media guardada en: ${mediaPath}`);
 
             const mediaBuffer = readFileSync(mediaPath);
-            const mimeType = getMimeType(ctx, mediaKind, mediaPath);
+            const { base64, mimeType } = await mediaNormalizer.normalize(mediaBuffer);
             const media: MediaInput = {
                 kind: mediaKind,
                 filePath: mediaPath,
                 mimeType,
-                base64: mediaBuffer.toString('base64'),
+                base64,
             };
 
             const currentState = state.getMyState() ?? {};
@@ -93,19 +94,4 @@ const getMediaKind = (ctx: any): MediaKind | null => {
     if (ctx.message?.imageMessage) return 'image';
     if (ctx.message?.stickerMessage) return 'sticker';
     return null;
-};
-
-const getMimeType = (ctx: any, kind: MediaKind, filePath: string): string => {
-    const mimeType =
-        ctx.message?.imageMessage?.mimetype ?? ctx.message?.stickerMessage?.mimetype;
-
-    if (mimeType) return mimeType;
-
-    const extension = extname(filePath).toLowerCase();
-
-    if (extension === '.png') return 'image/png';
-    if (extension === '.jpg' || extension === '.jpeg') return 'image/jpeg';
-    if (extension === '.webp' || kind === 'sticker') return 'image/webp';
-
-    return 'application/octet-stream';
 };
